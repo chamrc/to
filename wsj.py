@@ -1,30 +1,18 @@
 import numpy as np
 import os
-from enum import IntEnum, unique
-from flare.helpers import p
-
-DEV, TRAIN, TEST = range(3)
+from .options import *
+from .helpers import *
 
 
 class WSJ():
-    """ Load the WSJ speech dataset
-
-    Ensure WSJ_PATH is path to directory containing
-    all data files (.npy) provided on Kaggle.
-
-    Example usage:
-        loader = WSJ()
-        trainX, trainY = loader.train
-        assert(trainX.shape[0] == 24590)
-
-"""
 
     def __init__(self, cfg):
         self.cfg = cfg
         self.dev_set = None
         self.train_set = None
         self.test_set = None
-        self.directory = os.environ['PWD'] + '/data'
+        default_directory = os.path.join(csd(), 'data')
+        self.directory = get(self.cfg, WSJOptions.WSJ_FOLDER.value, default=default_directory)
 
     @property
     def dev(self):
@@ -44,41 +32,38 @@ class WSJ():
             self.test_set = self.load_raw(self.directory, TEST)
         return self.test_set
 
-    def get_type_name(self, data_type):
-        if data_type is DEV:
-            return 'dev'
-        elif data_type is TRAIN:
-            return 'train'
-        elif data_type is TEST:
-            return 'test'
+    def __value_name(self, is_label):
+        return 'labels' if is_label else 'features'
+
+    def __get_path(self, data_type, is_label):
+        options = [
+            (WSJOptions.DEV_DATA_FILE, WSJOptions.DEV_LABELS_FILE), \
+            (WSJOptions.TRAIN_DATA_FILE, WSJOptions.TRAIN_LABELS_FILE), \
+            (WSJOptions.TEST_DATA_FILE, None)
+        ]
+        key = options[data_type][is_label]
+
+        if key is not None and has(self.cfg, key.value):
+            return os.path.join(self.directory, get(self.cfg, key.value))
         else:
-            return ''
+            return os.path.join(
+                self.directory, '{}-{}.npy'.format(data_type_name(data_type), self.__value_name(is_label))
+            )
 
-    def get_path(self, data_type, array_type):
-        if hasattr(self.cfg, '{}_{}_path'.format(
-                self.get_type_name(data_type), array_type)):
-            return getattr(self.cfg, '{}_{}_path'.format(
-                self.get_type_name(data_type), array_type))
-
-        return os.path.join(self.directory, '{}-{}.npy'.format(
-            self.get_type_name(data_type), array_type))
-
-    def load_path(self, data_type, array_type):
-        path = self.get_path(data_type, array_type)
+    def __load_path(self, data_type, is_label):
+        path = self.__get_path(data_type, is_label)
         if os.path.isfile(path):
-            results = np.load(
-                self.get_path(data_type, array_type), encoding='bytes')
+            results = np.load(path, encoding='bytes')
             p('Dataset "{}" has {} records.'.format(path, len(results)))
             return results
         return None
 
-    def save_path(self, data, data_type, array_type):
-        path = self.get_path(data_type, array_type)
+    def __save_path(self, data, data_type, is_label):
+        path = self.__get_path(data_type, is_label)
         np.save(path, data, allow_pickle=False)
 
     def load_raw(self, path, data_type):
-        return (self.load_path(data_type, 'features'),
-                self.load_path(data_type, 'labels'))
+        return (self.__load_path(data_type, False), self.__load_path(data_type, True))
 
     def __len__(self):
         return 3

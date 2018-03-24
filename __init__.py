@@ -14,8 +14,7 @@ def _import_all_modules():
             modulename = filename.split('.')[0]  # filename without extension
             package_module = '.'.join([__name__, modulename])
             try:
-                module = __import__(package_module, globals_, locals_,
-                                    [modulename])
+                module = __import__(package_module, globals_, locals_, [modulename])
             except BaseException:
                 traceback.print_exc()
                 raise
