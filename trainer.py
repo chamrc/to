@@ -32,7 +32,7 @@ class Trainer(object):
         super(Trainer, self).__init__()
 
         self.epoch_ran = 0
-        self.logger = BatchLogger()
+        self.logger = BatchLogger(self)
         self.name = sys.argv[0].replace('.py', '')
         self.commands = ['list', 'help', 'use', 'load', 'run', 'test', 'validate', 'set']
         # Configurations
@@ -409,7 +409,28 @@ class Trainer(object):
     # Neural Network
     #----------------------------------------------------------------------------------------------------------
 
-    def match(self, y_hat, y):
+    def __post_test(self, x, y, extras, y_hat):
+        result = None
+
+        if has(self.event_handlers, TrainerEvents.POST_TEST.value):
+            y_hat, result = get(self.event_handlers, TrainerEvents.POST_TEST.value)(x, y, extras, y_hat)
+        else:
+            labels_axis = get(self.cfg, TrainerOptions.LABELS_AXIS.value, default=1)
+            result = predictions.data.max(1, keepdim=True)[1].cpu().numpy().flatten()
+
+        return result
+
+    def __match(self, x, y, extras, y_hat):
+        match_results = None
+
+        if has(self.event_handlers, TrainerEvents.MATCH_RESULTS.value):
+            match_results = get(self.event_handlers, TrainerEvents.MATCH_RESULTS.value)(x, y, extras, y_hat)
+        else:
+            match_results = self.__default_match(y_hat, y)  # Compute losses
+
+        return match_results
+
+    def __default_match(self, y_hat, y):
         predictions = y_hat.data.max(1, keepdim=True)[1]
         expectations = y.long()
 
@@ -418,86 +439,62 @@ class Trainer(object):
         else:
             return predictions.cpu().eq(expectations)
 
+    def __propagate_loss(self, x, y, extras, y_hat):
+        loss = None
+        if has(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value):
+            loss = get(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value)(x, y, extras, y_hat)
+        else:
+            loss = self.loss_fn(y_hat, to_variable(y).long().squeeze())  # Compute losses
+
+        self.logger.log_loss(loss.data.cpu().numpy())
+        loss.backward()
+        self.optimizer.step()
+
+        return loss
+
+    def __process_batch(self, batch, data_type=TRAIN):
+        self.logger.increment()
+
+        x, y, extras, loss = batch[0], batch[1], batch[2:], None
+        self.optimizer.zero_grad()
+
+        if has(self.event_handlers, TrainerEvents.PRE_PROCESS.value):
+            x, y, extras = get(self.event_handlers, TrainerEvents.PRE_PROCESS.value)(x, y, extras)
+
+        y_hat = None
+        self.model.train()
+        if has(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value):
+            args, kwargs = get(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value)(x, y, extras)
+            y_hat = self.model(to_variable(x), *args, **kwargs)
+        else:
+            y_hat = self.model(to_variable(x))
+
+        if has(self.event_handlers, TrainerEvents.POST_PROCESS.value):
+            y_hat = get(self.event_handlers, TrainerEvents.POST_PROCESS.value)(x, y, extras, y_hat)
+
+        if data_type == TRAIN:
+            loss = self.__propagate_loss(x, y, extras, y_hat)
+
+        self.logger.log_batch(x, y, extras, y_hat)
+        self.logger.print_batch()
+
+        return x, y, extras, y_hat
+
     def run(self, epochs=1):
         dev_mode = get(self.cfg, TrainerOptions.DEV_MODE.value, default=False)
         train_type = DEV if dev_mode else TRAIN
-        print_interval = get(self.cfg, TrainerOptions.PRINT_INVERVAL.value, default=100)
-        print_accuracy = get(self.cfg, TrainerOptions.PRINT_ACCURACY.value, default=True)
 
-        t0 = time.time()
         dataloader = self.__get_dataloader(train_type)
+
+        self.logger.start()
         for epoch in range(epochs):
-            losses, batch_count = [], 0
-            interval_correct, interval_count = 0, 0
-            all_correct, all_count = 0, 0
-            t1 = time.time()
+            self.logger.start_epoch()
 
             for batch in dataloader:
-                x, y, extras = batch[0], batch[1], batch[2:]
-                self.optimizer.zero_grad()
-
-                if has(self.event_handlers, TrainerEvents.PRE_PROCESS.value):
-                    x, y, extras = get(self.event_handlers, TrainerEvents.PRE_PROCESS.value)(x, y, extras)
-
-                y_hat = None
-                self.model.train()
-                if has(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value):
-                    args, kwargs = get(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value)(x, y, extras)
-                    y_hat = self.model(to_variable(x), *args, **kwargs)
-                else:
-                    y_hat = self.model(to_variable(x))
-
-                if has(self.event_handlers, TrainerEvents.POST_PROCESS.value):
-                    y_hat = get(self.event_handlers, TrainerEvents.POST_PROCESS.value)(x, y, extras, y_hat)
-
-                loss = None
-                if has(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value):
-                    loss = get(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value)(x, y, extras, y_hat)
-                else:
-                    loss = self.loss_fn(y_hat, to_variable(y).long().squeeze())  # Compute losses
-
-                loss.backward()
-                losses.append(loss.data.cpu().numpy())
-                self.optimizer.step()
-                batch_count += 1
-
-                interval_count += len(x)
-                all_count += len(x)
-                if print_accuracy:
-                    match_results = None
-                    if has(self.event_handlers, TrainerEvents.MATCH_RESULTS.value):
-                        match_results = get(self.event_handlers, TrainerEvents.MATCH_RESULTS.value)(x, y, extras, y_hat)
-                    else:
-                        match_results = self.match(y_hat, y)  # Compute losses
-
-                    correct = match_results.sum()
-                    interval_correct += correct
-                    all_correct += correct
-
-                if batch_count % print_interval == 0:
-                    curr_time = time.time()
-                    batch_time = curr_time - t1
-                    total_time = curr_time - t0
-                    t1 = time.time()
-
-                    percentage = (interval_correct / max(interval_count, 1)) * 100
-
-                    template = None
-                    if print_accuracy:
-                        template = 'Done training epoch {0} batch {1} count {2}. Time elapsed: {3:.2f} | {4:.2f} seconds. Accuracy: {5:.2f} %. Loss: {6:.12f}.'
-                    else:
-                        template = 'Done training epoch {0} batch {1} count {2}. Time elapsed: {3:.2f} | {4:.2f} seconds. Loss: {6:.12f}.'
-
-                    p(template.format(self.epoch_ran + 1, batch_count, all_count, \
-                        batch_time, total_time, percentage, np.asscalar(losses[-1])))
-                    interval_correct, interval_count = 0, 0
+                self.__process_batch(batch)
 
             self.epoch_ran += 1
-            percentage = all_correct / max(all_count, 1) * 100
-            if percentage == 0:
-                percentage = None
-            loss = np.asscalar(np.mean(losses))
-
+            percentage, (_, loss) = self.logger.get_percentage(), self.logger.get_loss()
             self.save_model(percentage, loss)
 
         return self
@@ -506,90 +503,21 @@ class Trainer(object):
         return self.test(DEV)
 
     def test(self, data_type=TEST):
-        print_interval = get(self.cfg, TrainerOptions.PRINT_INVERVAL.value, default=100)
-        print_accuracy = get(self.cfg, TrainerOptions.PRINT_ACCURACY.value, default=True)
-
-        losses, batch_count = [], 0
-        interval_correct, interval_count = 0, 0
-        all_correct, all_count = 0, 0
-        results = []
-        t0 = t1 = time.time()
-
         dataloader = self.__get_dataloader(TEST)
+
+        self.logger.start(data_type)
+        self.logger.start_epoch()
+
         for batch in dataloader:
-            x, y, extras = batch[0], batch[1], batch[2:]
-            self.optimizer.zero_grad()
+            x, y, extras, y_hat = self.__process_batch(batch)
 
-            if has(self.event_handlers, TrainerEvents.PRE_PROCESS.value):
-                x, y, extras = get(self.event_handlers, TrainerEvents.PRE_PROCESS.value)(x, y, extras)
-
-            y_hat = None
-            self.model.eval()
-            if has(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value):
-                args, kwargs = get(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value)(x, y, extras)
-                y_hat = self.model(to_variable(x), *args, **kwargs)
-            else:
-                y_hat = self.model(to_variable(x))
-
-            if has(self.event_handlers, TrainerEvents.POST_PROCESS.value):
-                y_hat = get(self.event_handlers, TrainerEvents.POST_PROCESS.value)(x, y, extras, y_hat)
-
-            interval_count += len(x)
-            all_count += len(x)
             if data_type == TEST:
-                result = None
-                if has(self.event_handlers, TrainerEvents.POST_TEST.value):
-                    y_hat, result = get(self.event_handlers, TrainerEvents.POST_TEST.value)(x, y, extras, y_hat)
-                else:
-                    labels_axis = get(self.cfg, TrainerOptions.LABELS_AXIS.value, default=1)
-                    result = predictions.data.max(1, keepdim=True)[1].cpu().numpy().flatten()
+                result = self.__post_test(x, y, extras, y_hat)
                 results += list(result)
 
-                if batch_count % print_interval == 0:
-                    curr_time = time.time()
-                    batch_time = curr_time - t1
-                    total_time = curr_time - t0
-                    t1 = time.time()
-
-                    template = 'Done testing batch {} count {}. Time elapsed: {:.2f} | {:.2f} seconds.'
-                    p(template.format(batch_count, total_data, batch_time, total_time))
-            else:
-                if print_accuracy:
-                    match_results = None
-                    if has(self.event_handlers, TrainerEvents.MATCH_RESULTS.value):
-                        match_results = get(self.event_handlers, TrainerEvents.MATCH_RESULTS.value)(x, y, extras, y_hat)
-                    else:
-                        match_results = self.match(y_hat, y)  # Compute losses
-
-                    correct = match_results.sum()
-                    interval_correct += correct
-                    all_correct += correct
-
-                if batch_count % print_interval == 0:
-                    curr_time = time.time()
-                    batch_time = curr_time - t1
-                    total_time = curr_time - t0
-                    t1 = time.time()
-
-                    percentage = (interval_correct / max(interval_count, 1)) * 100
-
-                    template = None
-                    if print_accuracy:
-                        template = 'Done training epoch {0} batch {1} count {2}. Time elapsed: {3:.2f} | {4:.2f} seconds. Accuracy: {5:.2f} %. Loss: {6:.12f}.'
-                    else:
-                        template = 'Done training epoch {0} batch {1} count {2}. Time elapsed: {3:.2f} | {4:.2f} seconds. Loss: {6:.12f}.'
-
-                    p(template.format(self.epoch_ran + 1, batch_count, all_count, \
-                        batch_time, total_time, percentage, np.asscalar(losses[-1])))
-                    interval_correct, interval_count = 0, 0
-
-            if data_type == TEST:
                 # TODO: print to CSV
                 pass
             else:
-                percentage = all_correct / max(all_count, 1) * 100
-                if percentage == 0:
-                    percentage = None
-                p('{0} / {1} ({2:.2f} %) correct!'.format(all_correct, max(all_count, 1), percentage))
+                self.logger.print_percentage()
 
         return self
