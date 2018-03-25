@@ -98,9 +98,14 @@ class Trainer(object):
     #----------------------------------------------------------------------------------------------------------
 
     def load_cfg(self, cfg_file):
+        if not cfg_file.startswith(self.cfg_folder):
+            cfg_file = os.path.join(self.cfg_folder, cfg_file)
+        if not cfg_file.endswith('.py'):
+            cfg_file += '.py'
         path = os.path.join(csd(), cfg_file)
 
         try:
+            p('Loading configuration file at "{}"'.format(path))
             spec = importlib.util.spec_from_file_location('configuration', path)
             self.cfg = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(self.cfg)
