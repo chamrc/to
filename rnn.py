@@ -21,7 +21,7 @@ class TextModel(NeuralNetwork):
             len(starts) >= 0 and len(ends) >= 0
 
         for i, layer in enumerate(self.layers):
-            if isinstance(layer, nn.modules.rnn.RNNBase):
+            if is_RNN(layer):
                 if should_pack_padded and i in starts:
                     h = nn.utils.rnn.pack_padded_sequence(h, lengths, batch_first=False)
 

@@ -34,6 +34,8 @@ class TrainerOptions(Enum):
     DEV_MODE = 'dev_mode'
     PRINT_INVERVAL = 'print_inverval'
     PRINT_ACCURACY = 'print_accuracy'
+    # Defaults to 1, will convert (batch, #(labels)) to (batch, 1) for the output of the model
+    LABELS_AXIS = 'labels_axis'
 
 
 class TrainerEvents(Enum):
@@ -49,3 +51,5 @@ class TrainerEvents(Enum):
     POST_PROCESS = 'post_process'
     # fn(y, y_hat) => match_results (ndarray, 1 if correct, 0 otherwise)
     MATCH_RESULTS = 'match_results'
+    # fn(x, y, extras, y_hat) => y_hat, result
+    POST_TEST = 'post_test'
