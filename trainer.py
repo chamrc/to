@@ -30,6 +30,7 @@ class Trainer(object):
     def __init__(self):
         super(Trainer, self).__init__()
 
+        self.epoch_ran = 0
         self.name = sys.argv[0].replace('.py', '')
         self.commands = ['list', 'help', 'use', 'load', 'run', 'test', 'validate', 'set']
         # Configurations
@@ -40,6 +41,7 @@ class Trainer(object):
         # Models
         self.models_folder = 'models'
         self.Model = NeuralNetwork
+        self.cuda_enabled = False
         # Events
         self.event_handlers = {}
         # Data
@@ -52,13 +54,15 @@ class Trainer(object):
         self.reset()
 
     def reset(self):
-        self.epoch_ran = 0
         self.__init_model()
         self.__init_optim()
         self.__init_loss_fn()
 
     def __init_model(self):
         self.model = self.Model(self.cfg)
+        if torch.cuda.is_available():
+            self.cuda_enabled = True
+            self.model = self.model.cuda()
 
     def __init_optim(self):
         Optimizer = get(self.cfg, TrainerOptions.OPTIMIZER.value, default=optim.Adam)
@@ -107,6 +111,18 @@ class Trainer(object):
         return self
 
     #----------------------------------------------------------------------------------------------------------
+    # Events
+    #----------------------------------------------------------------------------------------------------------
+
+    def bind(self, event, handler):
+        if isinstance(event, TrainerEvents):
+            self.event_handlers[event.value] = handler
+        else:
+            raise Exception('Event "{}" should be a TrainerEvents.'.format(event))
+
+        return self
+
+    #----------------------------------------------------------------------------------------------------------
     # DataSet and DataLoader
     #----------------------------------------------------------------------------------------------------------
 
@@ -119,7 +135,17 @@ class Trainer(object):
         return self
 
     def __get_dataloader(self, data_type):
-        pass
+        if self.DataLoader is not None:
+            return self.DataLoader(self.cfg, data_type)
+        else:
+            dataset = self.DataSet(self.cfg, data_type)
+
+            if has(self.event_handlers, TrainerEvents.CUSTOMIZE_DATALOADER.value):
+                return get(self.event_handlers, TrainerEvents.CUSTOMIZE_DATALOADER.value)(self.cfg, data_type, dataset)
+            else:
+                should_shuffle = data_type != TEST
+                batch_size = get(self.cfg, TrainerOptions.BATCH_SIZE.value, default=64)
+                return DataLoader(dataset, batch_size=batch_size, shuffle=should_shuffle)
 
     #----------------------------------------------------------------------------------------------------------
     # Model
@@ -132,6 +158,13 @@ class Trainer(object):
         self.cfg.learning_rate = new_lr
         if has(self.cfg, TrainerOptions.OPTIMIZER_ARGS.value, 'lr'):
             self.cfg.optim_args['lr'] = new_lr
+
+        return self
+
+    def set_model(self, Model):
+        self.Model = Model
+        self.reset()
+        return self
 
     def save_model(self, percentage=None, loss=None):
         mkdirp(os.path.join(csd(), self.models_folder, self.name))
@@ -374,7 +407,97 @@ class Trainer(object):
     # Neural Network
     #----------------------------------------------------------------------------------------------------------
 
-    def run(self):
+    def __match(self, y_hat, y):
+        predictions = y_hat.data.max(1, keepdim=True)[1]
+        expectations = y.long()
+
+        if torch.cuda.is_available():
+            return predictions.eq(expectations.cuda())
+        else:
+            return predictions.cpu().eq(expectations)
+
+    def run(self, epochs=1):
+        dev_mode = get(self.cfg, TrainerOptions.DEV_MODE.value, default=False)
+        train_type = DEV if dev_mode else TRAIN
+        print_interval = get(self.cfg, TrainerOptions.PRINT_INVERVAL.value, default=100)
+        print_accuracy = get(self.cfg, TrainerOptions.PRINT_ACCURACY.value, default=True)
+
+        dataloader = self.__get_dataloader(train_type)
+        for epoch in range(epochs):
+            losses, percentages, batch_count = [], [], 0
+            interval_correct, interval_count = 0, 0
+            all_correct, all_count = 0, 0
+            t0 = t1 = time.time()
+
+            for batch in dataloader:
+                x, y, extras = batch[0], batch[1], batch[2:]
+                self.optimizer.zero_grad()
+
+                if has(self.event_handlers, TrainerEvents.PRE_PROCESS.value):
+                    x, y, extras = get(self.event_handlers, TrainerEvents.PRE_PROCESS.value)(x, y, extras)
+
+                y_hat = None
+                self.model.train()
+                if has(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value):
+                    args, kwargs = get(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value)(x, y, extras)
+                    y_hat = self.model(to_variable(x), *args, **kwargs)
+                else:
+                    y_hat = self.model(to_variable(x))
+
+                if has(self.event_handlers, TrainerEvents.POST_PROCESS.value):
+                    y_hat = get(self.event_handlers, TrainerEvents.POST_PROCESS.value)(x, y, extras, y_hat)
+
+                loss = None
+                if has(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value):
+                    loss = get(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value)(x, y, extras, y_hat)
+                else:
+                    loss = self.loss_fn(y_hat, to_variable(y).long().squeeze())  # Compute losses
+
+                loss.backward()
+                losses.append(loss.data.cpu().numpy())
+                self.optimizer.step()
+                batch_count += 1
+
+                interval_count += len(x)
+                all_count += len(x)
+                if print_accuracy:
+                    match_results = None
+                    if has(self.event_handlers, TrainerEvents.MATCH_RESULTS.value):
+                        match_results = get(self.event_handlers, TrainerEvents.MATCH_RESULTS.value)(x, y, extras, y_hat)
+                    else:
+                        match_results = self.__match(y_hat, y)  # Compute losses
+
+                    correct = results.sum()
+                    interval_correct += correct
+                    all_correct += correct
+
+                if batch_count % print_interval == 0:
+                    curr_time = time.time()
+                    batch_time = curr_time - t1
+                    total_time = curr_time - t0
+                    t1 = time.time()
+
+                    percentage = (interval_correct / max(interval_count, 1)) * 100
+                    percentages.append(percentage)
+
+                    template = None
+                    if print_accuracy:
+                        template = 'Done training epoch {0} batch {1} count {2}. Time elapsed: {3:.2f} | {4:.2f} seconds. Accuracy: {5:.2f} %. Loss: {6:.12f}.'
+                    else:
+                        template = 'Done training epoch {0} batch {1} count {2}. Time elapsed: {3:.2f} | {4:.2f} seconds. Loss: {6:.12f}.'
+
+                    p(template.format(self.epoch_ran + 1, batch_count, all_count, \
+                        batch_time, total_time, percentage, np.asscalar(losses[-1])))
+                    interval_correct, interval_count = 0, 0
+
+            self.epoch_ran += 1
+            percentage = all_correct / max(all_count, 1) * 100
+            if percentage == 0:
+                percentage = None
+            loss = np.asscalar(np.mean(losses))
+
+            self.save_model(percentage, loss)
+
         return self
 
     def validate(self):

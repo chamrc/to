@@ -4,6 +4,55 @@ import inspect
 import collections
 import pathlib
 import glob
+import torch
+import torch.nn.functional as F
+import numpy as np
+
+#----------------------------------------------------------------------------------------------------------
+# Decorators
+#----------------------------------------------------------------------------------------------------------
+
+
+def static(varname, value):
+
+    def decorate(func):
+        setattr(func, varname, value)
+        return func
+
+    return decorate
+
+
+#----------------------------------------------------------------------------------------------------------
+# List Helpers
+#----------------------------------------------------------------------------------------------------------
+
+
+def __first(lmd, lst, asc=True):
+    indexes = range(len(lst)) if asc else range(len(lst) - 1, -1, -1)
+    for i in indexes:
+        o = lst[i]
+        if lmd(i, o, lst) == True:
+            return i
+    return -1
+
+
+def first(lmd, lst):
+    return __first(lmd, lst, True)
+
+
+def last(lmd, lst):
+    return __first(lmd, lst, False)
+
+
+def all(lmd, lst, asc=True):
+    indexes = range(len(lst)) if asc else range(len(lst) - 1, -1, -1)
+    results = []
+    for i in indexes:
+        o = lst[i]
+        if lmd(i, o, lst) == True:
+            results.append(i)
+    return results
+
 
 #----------------------------------------------------------------------------------------------------------
 # IO Helpers
@@ -268,36 +317,28 @@ def init_layer_parameters(m, cfg):
         m.bias.data.zero_()
 
 
-def collate_fn(axis=1, dim=2, mode='constant', value=0, min_len=None, buckets=None):
+def collate(data, axis=1, dim=2, mode='constant', value=0, min_len=None, concat_labels=False):
+    axis, dim = axis - 1, dim - 1
+    # axis and dim are on a per row basis
+    data.sort(key=lambda x: len(x[0]), reverse=True)
 
-    def collate_data(data):
-        results = list(zip(*data))
-        data, labels = results[0], results[1]
+    results = list(zip(*data))
+    data, labels = results[0], results[1]
 
-        lengths = [row.shape[axis - 1] for row in data]
-        max_len = max(lengths)
-        if min_len is not None and max_len < min_len:
-            max_len = min_len
-        if buckets is not None:
-            try:
-                idx = next(i for i, v in enumerate(buckets) if v > max_len)
-                max_len = buckets[idx]
-            except:
-                raise ValueError('Buckets too small for collate_fn(), should be at least {}.'.format(max_len))
+    lengths = [row.shape[axis] for row in data]
+    max_len = max(lengths)
 
-        pad_locs = [
-            tuple(
-                sum(
-                    [[0, max_len - row.shape[axis - 1]]
-                     if i == (axis - 1) else [0, 0] for i in range(dim - 1, -1, -1)], []
-                )
-            ) for row in data
-        ]
+    if min_len is not None and max_len < min_len:
+        max_len = min_len
 
-        results[0] = torch.stack([F.pad(row, pad_locs[i], mode, value) for i, row in enumerate(data)])
+    pad_locs = [(0, 0) * (dim - axis - 1) + (0, max_len - row.shape[axis]) for i, row in enumerate(data)]
+
+    results[0] = torch.stack([F.pad(row, pad_locs[i], mode, value) for i, row in enumerate(data)])
+
+    if concat_labels:
+        results[1] = torch.cat(labels)
+    else:
         results[1] = torch.stack(labels)
-        one_hot = to_tensor(np.array([[1] * length + [0] * (max_len - length) for length in lengths]))
+    one_hot = to_tensor(np.array([[1] * length + [0] * (max_len - length) for length in lengths]))
 
-        return tuple(results + [one_hot])
-
-    return collate_data
+    return tuple(results + [lengths, one_hot])
