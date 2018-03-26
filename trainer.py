@@ -210,6 +210,8 @@ class Trainer(object):
             except Exception as e:
                 p('Failed to load model at path "{}"'.format(path))
                 traceback.print_exc()
+        else:
+            p('No saved model for neural network "{}" using configuration "{}".'.format(self.name, self.current_cfg))
 
         return self
 
@@ -414,16 +416,21 @@ class Trainer(object):
     # Neural Network
     #----------------------------------------------------------------------------------------------------------
 
-    def __post_test(self, x, y, extras, y_hat):
+    def __generate(self, x, y, extras, y_hat):
         result = None
 
-        if has(self.event_handlers, TrainerEvents.POST_TEST.value):
-            y_hat, result = get(self.event_handlers, TrainerEvents.POST_TEST.value)(x, y, extras, y_hat)
+        if has(self.event_handlers, TrainerEvents.GENERATE.value):
+            result = get(self.event_handlers, TrainerEvents.GENERATE.value)(x, y, extras, y_hat)
         else:
-            labels_axis = get(self.cfg, TrainerOptions.LABELS_AXIS.value, default=1)
+            labels_axis = get(self.cfg, TrainerOptions.GENERATE_AXIS.value, default=1)
             result = predictions.data.max(1, keepdim=True)[1].cpu().numpy().flatten()
 
         return result
+
+    def __post_test(self, results):
+        if has(self.event_handlers, TrainerEvents.POST_TEST.value):
+            return get(self.event_handlers, TrainerEvents.POST_TEST.value)(results)
+        return results
 
     def __match(self, x, y, extras, y_hat):
         match_results = None
@@ -460,14 +467,18 @@ class Trainer(object):
     def __process_batch(self, batch, data_type=TRAIN):
         self.logger.increment()
 
-        x, y, extras, loss = batch[0], batch[1], batch[2:], None
+        x, y, extras = batch[0], batch[1], batch[2:]
         self.optimizer.zero_grad()
 
         if has(self.event_handlers, TrainerEvents.PRE_PROCESS.value):
             x, y, extras = get(self.event_handlers, TrainerEvents.PRE_PROCESS.value)(x, y, extras)
 
+        if data_type == TRAIN:
+            self.model.train()
+        else:
+            self.model.eval()
+
         y_hat = None
-        self.model.train()
         if has(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value):
             args, kwargs = get(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value)(x, y, extras)
             y_hat = self.model(to_variable(x), *args, **kwargs)
@@ -478,7 +489,7 @@ class Trainer(object):
             y_hat = get(self.event_handlers, TrainerEvents.POST_PROCESS.value)(x, y, extras, y_hat)
 
         if data_type == TRAIN:
-            loss = self.__propagate_loss(x, y, extras, y_hat)
+            self.__propagate_loss(x, y, extras, y_hat)
 
         self.logger.log_batch(x, y, extras, y_hat)
         self.logger.print_batch()
@@ -513,16 +524,19 @@ class Trainer(object):
         self.logger.start(data_type)
         self.logger.start_epoch()
 
+        results = []
         for batch in dataloader:
-            x, y, extras, y_hat = self.__process_batch(batch)
+            x, y, extras, y_hat = self.__process_batch(batch, data_type)
 
             if data_type == TEST:
-                result = self.__post_test(x, y, extras, y_hat)
+                result = self.__generate(x, y, extras, y_hat)
                 results += list(result)
-
-                # TODO: print to CSV
-                pass
             else:
                 self.logger.print_percentage()
+
+        if data_type == TEST:
+            results = self.__post_test(results)
+            # TODO: print to CSV
+            pass
 
         return self

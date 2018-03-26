@@ -21,4 +21,9 @@ class DataSet(TensorDataset):
         return len(self.data)
 
     def __getitem__(self, i):
-        return to_tensor(np.array(self.data[i])), to_tensor(np.array(self.labels[i]))
+        label = [-1]
+        if self.labels is not None:
+            label = self.labels[i]
+            if not hasattr(label, '__iter__'):
+                label = [label]
+        return to_tensor(np.array(self.data[i])), to_tensor(np.array(label))

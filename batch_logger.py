@@ -64,7 +64,7 @@ class BatchLogger(object):
 
         if self.data_type == TEST:
             template = 'Done testing batch {} count {}. Time elapsed: {:.2f} | {:.2f} seconds.'
-            p(template.format(self.batch_count, self.total_data, batch_time, total_time))
+            p(template.format(self.batch_count, self.all_count, batch_time, total_time))
         else:
             percentage = (self.interval_correct / max(self.interval_count, 1)) * 100
 

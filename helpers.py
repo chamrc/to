@@ -9,6 +9,24 @@ import torch.nn.functional as F
 import numpy as np
 
 #----------------------------------------------------------------------------------------------------------
+# Sort and ArgSort
+#----------------------------------------------------------------------------------------------------------
+
+
+def argsort(lst, by=None, reverse=False):
+    if by is not None:
+        return sorted(range(len(lst)), key=lambda i: by(lst[i]), reverse=reverse)
+    return sorted(range(len(lst)), key=lst.__getitem__, reverse=reverse)
+
+
+def sort(lst, indexes=None, reverse=False):
+    if indexes is not None:
+        result = [lst[i] for i in indexes]
+        return result[::-1] if reverse else result
+    return sorted(lst)
+
+
+#----------------------------------------------------------------------------------------------------------
 # Decorators
 #----------------------------------------------------------------------------------------------------------
 
@@ -44,7 +62,7 @@ def last(lmd, lst):
     return __first(lmd, lst, False)
 
 
-def all(lmd, lst, asc=True):
+def where(lmd, lst, asc=True):
     indexes = range(len(lst)) if asc else range(len(lst) - 1, -1, -1)
     results = []
     for i in indexes:
@@ -245,8 +263,10 @@ def get(o, *k, default=None):
 #----------------------------------------------------------------------------------------------------------
 
 
-def to_tensor(numpy_array):
-    return torch.from_numpy(numpy_array).float()
+def to_tensor(array):
+    if isinstance(array, list):
+        array = np.array(array)
+    return torch.from_numpy(array).float()
 
 
 def to_variable(tensor):

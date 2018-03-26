@@ -14,8 +14,8 @@ class TextModel(NeuralNetwork):
     def __forward(self, h, lengths):
         is_RNN = lambda x: isinstance(x, nn.modules.rnn.RNNBase)
 
-        starts = all(lambda i, o, A: i >= 0 and not is_RNN(get(A, i - 1)) and is_RNN(o), self.layers)
-        ends = all(lambda i, o, A: i <= len(A) - 1 and is_RNN(o) and not is_RNN(get(A, i + 1)), self.layers)
+        starts = where(lambda i, o, A: i >= 0 and not is_RNN(get(A, i - 1)) and is_RNN(o), self.layers)
+        ends = where(lambda i, o, A: i <= len(A) - 1 and is_RNN(o) and not is_RNN(get(A, i + 1)), self.layers)
 
         should_pack_padded = get(self.cfg, TextModelOptions.PACK_PADDED.value, default=False) and \
             len(starts) >= 0 and len(ends) >= 0
