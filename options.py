@@ -29,14 +29,17 @@ class TrainerOptions(Enum):
     BATCH_SIZE = 'batch_size'
     OPTIMIZER = 'optimizer'
     OPTIMIZER_ARGS = 'optimizer_args'
+    SCHEDULER = 'scheduler'
+    SCHEDULER_ARGS = 'scheduler_args'
+    SCHEDULE_ON_TRAIN_LOSS = 'schedule_on_train_loss'
     LOSS_FN = 'loss_fn'
     AUTO_RELOAD_SAVED_MODEL = 'auto_reload_saved_model'
     DEV_MODE = 'dev_mode'
     PRINT_INVERVAL = 'print_inverval'
     PRINT_ACCURACY = 'print_accuracy'
     CSV_FIELD_NAMES = 'csv_field_names'
-    # Defaults to 1, will convert (batch, #(labels)) to (batch, 1) for the output of the model
-    GENERATE_AXIS = 'generate_axis'
+    # Generate test output (batch, 1) from y_hat (batch, classes)
+    GENERATE_AXIS = 'generate_axis'  # Defaults to 1
 
 
 class TrainerEvents(Enum):
