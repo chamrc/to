@@ -491,10 +491,11 @@ class Trainer(object):
         if data_type == TRAIN:
             self.__propagate_loss(x, y, extras, y_hat)
 
+        return x, y, extras, y_hat
+
+    def __print_batch(self, x, y, extras, y_hat):
         self.logger.log_batch(x, y, extras, y_hat)
         self.logger.print_batch()
-
-        return x, y, extras, y_hat
 
     def run(self, epochs=1):
         dev_mode = get(self.cfg, TrainerOptions.DEV_MODE.value, default=False)
@@ -507,7 +508,8 @@ class Trainer(object):
             self.logger.start_epoch()
 
             for batch in dataloader:
-                self.__process_batch(batch)
+                x, y, extras, y_hat = self.__process_batch(batch)
+                self.__print_batch(x, y, extras, y_hat)
 
             self.epoch_ran += 1
             percentage, (_, loss) = self.logger.get_percentage(), self.logger.get_loss()
@@ -531,12 +533,19 @@ class Trainer(object):
             if data_type == TEST:
                 result = self.__generate(x, y, extras, y_hat)
                 results += list(result)
-            else:
-                self.logger.print_percentage()
+
+            self.__print_batch(x, y, extras, y_hat)
 
         if data_type == TEST:
             results = self.__post_test(results)
-            # TODO: print to CSV
-            pass
+            folder = os.path.join(csd(), self.submissions_folder, self.name)
+            file = '{} - {:03d}.csv'.format(self.current_cfg, self.epoch_ran)
+            path = os.path.join(folder, file)
+
+            mkdirp(folder)
+            write_to_csv(results, path)
+            p('Submission file saved to "{}".'.format(path))
+        else:
+            self.logger.print_percentage()
 
         return self
