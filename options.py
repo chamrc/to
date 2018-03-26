@@ -5,12 +5,12 @@ data_type_name = lambda x: ['dev', 'train', 'test'][x]
 
 
 class WSJOptions(Enum):
-    WSJ_FOLDER = 'wsj_folder'
-    DEV_DATA_FILE = 'dev_data_file'
-    DEV_LABELS_FILE = 'dev_labels_file'
-    TRAIN_DATA_FILE = 'train_data_file'
-    TRAIN_LABELS_FILE = 'train_labels_file'
-    TEST_DATA_FILE = 'test_data_file'
+    WSJ_FOLDER = 'wsj_folder'  # Defaults to 'data'
+    DEV_DATA_FILE = 'dev_data_file'  # Defaults to 'dev-features.npy'
+    DEV_LABELS_FILE = 'dev_labels_file'  # Defaults to 'dev-labels.npy'
+    TRAIN_DATA_FILE = 'train_data_file'  # Defaults to 'train-features.npy'
+    TRAIN_LABELS_FILE = 'train_labels_file'  # Defaults to 'train-labels.npy'
+    TEST_DATA_FILE = 'test_data_file'  # Defaults to 'test-features.npy'
 
 
 class NeuralNetworkOptions(Enum):
@@ -20,24 +20,23 @@ class NeuralNetworkOptions(Enum):
 
 
 class TextModelOptions(Enum):
-    EMBEDDING = 'embedding'
-    PROJECTION = 'projection'
-    PACK_PADDED = 'pack_padded'
+    PACK_PADDED = 'pack_padded'  # Defaults to False
 
 
 class TrainerOptions(Enum):
-    BATCH_SIZE = 'batch_size'
-    OPTIMIZER = 'optimizer'
-    OPTIMIZER_ARGS = 'optimizer_args'
-    SCHEDULER = 'scheduler'
+    BATCH_SIZE = 'batch_size'  # Defaults to 64
+    OPTIMIZER = 'optimizer'  # Defaults to Adam
+    OPTIMIZER_ARGS = 'optimizer_args'  # Defaults to { 'lr': 0.01 }
+    SCHEDULER = 'scheduler'  # Defaults to schedule on validation loss
     SCHEDULER_ARGS = 'scheduler_args'
-    SCHEDULE_ON_TRAIN_LOSS = 'schedule_on_train_loss'
-    LOSS_FN = 'loss_fn'
+    SCHEDULE_ON_ACCURACY = 'schedule_on_accuracy'  # Only works if print_accuracy is True
+    SCHEDULE_ON_TRAIN_LOSS = 'schedule_on_train_loss'  # Schedule on train loss instead
+    LOSS_FN = 'loss_fn'  # Defaults to nn.CrossEntropyLoss
     AUTO_RELOAD_SAVED_MODEL = 'auto_reload_saved_model'
-    DEV_MODE = 'dev_mode'
-    PRINT_INVERVAL = 'print_inverval'
-    PRINT_ACCURACY = 'print_accuracy'
-    CSV_FIELD_NAMES = 'csv_field_names'
+    DEV_MODE = 'dev_mode'  # Defaults to False
+    PRINT_INVERVAL = 'print_inverval'  # Defaults to 100
+    PRINT_ACCURACY = 'print_accuracy'  # Defaults to True
+    CSV_FIELD_NAMES = 'csv_field_names'  # Defaults to ['id', 'label']
     # Generate test output (batch, 1) from y_hat (batch, classes)
     GENERATE_AXIS = 'generate_axis'  # Defaults to 1
 
