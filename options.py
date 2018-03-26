@@ -14,8 +14,8 @@ class WSJOptions(Enum):
 
 
 class NeuralNetworkOptions(Enum):
-    IN_CHANNELS = 'in_channels'
-    OUT_CHANNELS = 'out_channels'
+    IN_CHANNELS = 'in_channels'  # *MUST*
+    OUT_CHANNELS = 'out_channels'  # *MUST*
     LAYERS = 'layers'
 
 
@@ -41,7 +41,7 @@ class TrainerOptions(Enum):
     GENERATE_AXIS = 'generate_axis'  # Defaults to 1
 
 
-class TrainerEvents(Enum):
+class TrainerEvents(Enum):  # Events that can be binded
     # Called when loss is being computed.
     # fn(x, y, extras, y_hat) => loss
     COMPUTE_LOSS = 'compute_loss'
