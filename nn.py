@@ -1,7 +1,14 @@
 import torch
 from torch import nn
+from enum import IntEnum
 from .helpers import *
 from .options import *
+
+
+class Mode(IntEnum):
+    TRAIN = 0
+    VALIDATE = 1
+    TEST = 2
 
 
 class NeuralNetwork(torch.nn.Module):

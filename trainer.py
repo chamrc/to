@@ -451,7 +451,7 @@ class Trainer(object):
         else:
             return predictions.cpu().eq(expectations)
 
-    def __propagate_loss(self, x, y, extras, y_hat):
+    def __compute_loss(self, x, y, extras, y_hat):
         loss = None
         if has(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value):
             loss = get(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value)(x, y, extras, y_hat)
@@ -459,12 +459,16 @@ class Trainer(object):
             loss = self.loss_fn(y_hat, to_variable(y).long().squeeze())  # Compute losses
 
         self.logger.log_loss(loss.data.cpu().numpy())
+        return loss
+
+    def __propagate_loss(self, x, y, extras, y_hat):
+        loss = self.__compute_loss(x, y, extras, y_hat)
         loss.backward()
         self.optimizer.step()
 
         return loss
 
-    def __process_batch(self, batch, data_type=TRAIN):
+    def __process_batch(self, batch, mode=Mode.TRAIN):
         self.logger.increment()
 
         x, y, extras = batch[0], batch[1], batch[2:]
@@ -473,7 +477,7 @@ class Trainer(object):
         if has(self.event_handlers, TrainerEvents.PRE_PROCESS.value):
             x, y, extras = get(self.event_handlers, TrainerEvents.PRE_PROCESS.value)(x, y, extras)
 
-        if data_type == TRAIN:
+        if mode is Mode.TRAIN:
             self.model.train()
         else:
             self.model.eval()
@@ -488,8 +492,10 @@ class Trainer(object):
         if has(self.event_handlers, TrainerEvents.POST_PROCESS.value):
             y_hat = get(self.event_handlers, TrainerEvents.POST_PROCESS.value)(x, y, extras, y_hat)
 
-        if data_type == TRAIN:
+        if mode is Mode.TRAIN:
             self.__propagate_loss(x, y, extras, y_hat)
+        elif mode is Mode.VALIDATE:
+            self.__compute_loss(x, y, extras, y_hat)
 
         return x, y, extras, y_hat
 
@@ -512,31 +518,31 @@ class Trainer(object):
                 self.__print_batch(x, y, extras, y_hat)
 
             self.epoch_ran += 1
-            percentage, (_, loss) = self.logger.get_percentage(), self.logger.get_loss()
+            percentage, (_, loss, _) = self.logger.get_percentage(), self.logger.get_loss()
             self.save_model(percentage, loss)
 
         return self
 
     def validate(self):
-        return self.test(DEV)
+        return self.test(Mode.VALIDATE)
 
-    def test(self, data_type=TEST):
+    def test(self, mode=Mode.TEST):
         dataloader = self.__get_dataloader(TEST)
 
-        self.logger.start(data_type)
+        self.logger.start(mode)
         self.logger.start_epoch()
 
         results = []
         for batch in dataloader:
-            x, y, extras, y_hat = self.__process_batch(batch, data_type)
+            x, y, extras, y_hat = self.__process_batch(batch, mode)
 
-            if data_type == TEST:
+            if mode == Mode.TEST:
                 result = self.__generate(x, y, extras, y_hat)
                 results += list(result)
 
             self.__print_batch(x, y, extras, y_hat)
 
-        if data_type == TEST:
+        if mode is Mode.TEST:
             results = self.__post_test(results)
             folder = os.path.join(csd(), self.submissions_folder, self.name)
             file = '{} - {:03d}.csv'.format(self.current_cfg, self.epoch_ran)
@@ -548,6 +554,6 @@ class Trainer(object):
 
             p('Submission file saved to "{}".'.format(path))
         else:
-            self.logger.print_percentage()
+            self.logger.print_summary()
 
         return self
