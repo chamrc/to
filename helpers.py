@@ -145,7 +145,7 @@ def write_to_csv(data, path='submission.csv', field_names=['id', 'label']):
         writer.writeheader()
 
         for i, label in enumerate(data):
-            writer.writerow({'id': str(i), 'label': str(label)})
+            writer.writerow({field_names[0]: str(i), field_names[1]: str(label)})
 
 
 #----------------------------------------------------------------------------------------------------------
