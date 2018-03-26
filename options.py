@@ -34,6 +34,7 @@ class TrainerOptions(Enum):
     DEV_MODE = 'dev_mode'
     PRINT_INVERVAL = 'print_inverval'
     PRINT_ACCURACY = 'print_accuracy'
+    CSV_FIELD_NAMES = 'csv_field_names'
     # Defaults to 1, will convert (batch, #(labels)) to (batch, 1) for the output of the model
     GENERATE_AXIS = 'generate_axis'
 

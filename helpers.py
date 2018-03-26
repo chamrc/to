@@ -139,10 +139,8 @@ def read_from_csv(path, as_type=int):
         return count, data
 
 
-def write_to_csv(data, path='submission.csv'):
+def write_to_csv(data, path='submission.csv', field_names=['id', 'label']):
     with open(path, 'w') as csv_file:
-        field_names = ['id', 'label']
-
         writer = csv.DictWriter(csv_file, fieldnames=field_names)
         writer.writeheader()
 

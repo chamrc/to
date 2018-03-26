@@ -543,7 +543,9 @@ class Trainer(object):
             path = os.path.join(folder, file)
 
             mkdirp(folder)
-            write_to_csv(results, path)
+            field_names = get(self.cfg, TrainerOptions.CSV_FIELD_NAMES.value, default=['id', 'label'])
+            write_to_csv(results, path, field_names)
+
             p('Submission file saved to "{}".'.format(path))
         else:
             self.logger.print_percentage()
