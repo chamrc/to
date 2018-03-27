@@ -31,43 +31,6 @@ class Flatten(torch.nn.Module):
         return input.view(input.size(0), -1)
 
 
-class SpatialPyramidPoolingLayer(torch.nn.Module):
-
-    def __init__(self, out_pool_size, num_sample=1):
-        super(SpatialPyramidPoolingLayer, self).__init__()
-        self.out_pool_size = out_pool_size
-        self.num_sample = 1
-
-    def forward(self, previous_conv, previous_conv_size):
-        """
-                previous_conv: a tensor vector of previous convolution layer
-                num_sample: an int number of image in the batch
-                previous_conv_size: an int vector [height, width] of the matrix features size of previous
-                convolution layer.
-                out_pool_size: a int vector of expected output size of max pooling layer
-
-                returns: a tensor vector with shape [1 x n] is the concentration of multi-level pooling
-        """
-        for i in range(len(self.out_pool_size)):
-            h_wid = int(math.ceil(previous_conv_size[0] / self.out_pool_size[i]))
-            w_wid = int(math.ceil(previous_conv_size[1] / self.out_pool_size[i]))
-            h_pad = (h_wid * self.out_pool_size[i] - previous_conv_size[0] + 1) / 2
-            w_pad = (w_wid * self.out_pool_size[i] - previous_conv_size[1] + 1) / 2
-
-            maxpool = torch.nn.MaxPool2d((h_wid, w_wid), stride=(h_wid, w_wid), padding=(h_pad, w_pad))
-            x = maxpool(previous_conv)
-
-            if (i == 0):
-                spp = x.view(self.num_sample, -1)
-            else:
-                spp = torch.cat((spp, x.view(self.num_sample, -1)), 1)
-
-        return spp
-
-    def __repr__(self):
-        return self.__class__.__name__ + '()'
-
-
 class MeanPoolingLayer(torch.nn.Module):
 
     def __init__(self):

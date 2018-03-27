@@ -37,12 +37,12 @@ class BatchLogger(object):
     def log_loss(self, loss):
         self.losses.append(loss)
 
-    def log_batch(self, x, y, extras, y_hat):
+    def log_batch(self, mode, x, y, extras, y_hat):
         self.interval_count += len(x)
         self.all_count += len(x)
 
         if self.print_accuracy and self.mode is not Mode.TEST:
-            match_results = self.trainer.__match(x, y, extras, y_hat)
+            match_results = self.trainer.__match(mode, x, y, extras, y_hat)
 
             correct = match_results.sum()
             self.interval_correct += correct

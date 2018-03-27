@@ -43,22 +43,22 @@ class TrainerOptions(Enum):
 
 class TrainerEvents(Enum):  # Events that can be binded
     # Called when loss is being computed.
-    # fn(x, y, extras, y_hat) => loss
+    # fn(mode, x, y, extras, y_hat) => loss
     COMPUTE_LOSS = 'compute_loss'
     # Called when dataloader is being loaded to add collate_fn and sampler.
     # fn(self.cfg, data_type, dataset) => dataloader
     CUSTOMIZE_DATALOADER = 'customize_dataloader'
     # Called before calling model
-    # fn(x, y, extras) => x, y, extras
+    # fn(mode, x, y, extras) => x, y, extras
     PRE_PROCESS = 'pre_process'
     # Called when calling model to get extra args and kwargss
-    # fn(x, y, extras) => *args, **kwargs
+    # fn(mode, x, y, extras) => *args, **kwargs
     MODEL_EXTRA_ARGS = 'model_extra_args'
     # Called after calling model
-    # fn(x, y, extras, y_hat) => y_hat
+    # fn(mode, x, y, extras, y_hat) => y_hat
     POST_PROCESS = 'post_process'
     # Called to get percentage accuracy
-    # fn(y, y_hat) => match_results (ndarray, 1 if correct, 0 otherwise)
+    # fn(mode, x, y, extras, y_hat) => match_results (ndarray, 1 if correct, 0 otherwise)
     MATCH_RESULTS = 'match_results'
     # Called after processing in each batch in TEST mode to generate output to be written to output.
     # fn(x, y, extras, y_hat) => result (This will be written to CSV file)

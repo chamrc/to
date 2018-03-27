@@ -432,11 +432,11 @@ class Trainer(object):
             return get(self.event_handlers, TrainerEvents.POST_TEST.value)(results)
         return results
 
-    def __match(self, x, y, extras, y_hat):
+    def __match(self, mode, x, y, extras, y_hat):
         match_results = None
 
         if has(self.event_handlers, TrainerEvents.MATCH_RESULTS.value):
-            match_results = get(self.event_handlers, TrainerEvents.MATCH_RESULTS.value)(x, y, extras, y_hat)
+            match_results = get(self.event_handlers, TrainerEvents.MATCH_RESULTS.value)(mode, x, y, extras, y_hat)
         else:
             match_results = self.__default_match(y_hat, y)  # Compute losses
 
@@ -451,18 +451,18 @@ class Trainer(object):
         else:
             return predictions.cpu().eq(expectations)
 
-    def __compute_loss(self, x, y, extras, y_hat):
+    def __compute_loss(self, mode, x, y, extras, y_hat):
         loss = None
         if has(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value):
-            loss = get(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value)(x, y, extras, y_hat)
+            loss = get(self.event_handlers, TrainerEvents.COMPUTE_LOSS.value)(mode, x, y, extras, y_hat)
         else:
             loss = self.loss_fn(y_hat, to_variable(y).long().squeeze())  # Compute losses
 
         self.logger.log_loss(loss.data.cpu().numpy())
         return loss
 
-    def __propagate_loss(self, x, y, extras, y_hat):
-        loss = self.__compute_loss(x, y, extras, y_hat)
+    def __propagate_loss(self, mode, x, y, extras, y_hat):
+        loss = self.__compute_loss(mode, x, y, extras, y_hat)
         loss.backward()
         self.optimizer.step()
 
@@ -475,7 +475,7 @@ class Trainer(object):
         self.optimizer.zero_grad()
 
         if has(self.event_handlers, TrainerEvents.PRE_PROCESS.value):
-            x, y, extras = get(self.event_handlers, TrainerEvents.PRE_PROCESS.value)(x, y, extras)
+            x, y, extras = get(self.event_handlers, TrainerEvents.PRE_PROCESS.value)(mode, x, y, extras)
 
         if mode is Mode.TRAIN:
             self.model.train()
@@ -484,24 +484,23 @@ class Trainer(object):
 
         y_hat = None
         if has(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value):
-            args, kwargs = get(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value)(x, y, extras)
-            # y_hat = self.model(to_variable(x), *args, **kwargs)
+            args, kwargs = get(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value)(mode, x, y, extras)
             y_hat = forward(self.model, [to_variable(x)] + args, kwargs)
         else:
             y_hat = self.model(to_variable(x))
 
         if has(self.event_handlers, TrainerEvents.POST_PROCESS.value):
-            y_hat = get(self.event_handlers, TrainerEvents.POST_PROCESS.value)(x, y, extras, y_hat)
+            y_hat = get(self.event_handlers, TrainerEvents.POST_PROCESS.value)(mode, x, y, extras, y_hat)
 
         if mode is Mode.TRAIN:
-            self.__propagate_loss(x, y, extras, y_hat)
+            self.__propagate_loss(mode, x, y, extras, y_hat)
         elif mode is Mode.VALIDATE:
-            self.__compute_loss(x, y, extras, y_hat)
+            self.__compute_loss(mode, x, y, extras, y_hat)
 
         return x, y, extras, y_hat
 
-    def __print_batch(self, x, y, extras, y_hat):
-        self.logger.log_batch(x, y, extras, y_hat)
+    def __print_batch(self, mode, x, y, extras, y_hat):
+        self.logger.log_batch(mode, x, y, extras, y_hat)
         self.logger.print_batch()
 
     def run(self, epochs=1):
@@ -516,7 +515,7 @@ class Trainer(object):
 
             for batch in dataloader:
                 x, y, extras, y_hat = self.__process_batch(batch)
-                self.__print_batch(x, y, extras, y_hat)
+                self.__print_batch(Mode.TRAIN, x, y, extras, y_hat)
 
             self.epoch_ran += 1
             percentage, (_, loss, _) = self.logger.get_percentage(), self.logger.get_loss()
@@ -541,7 +540,7 @@ class Trainer(object):
                 result = self.__generate(x, y, extras, y_hat)
                 results += list(result)
 
-            self.__print_batch(x, y, extras, y_hat)
+            self.__print_batch(mode, x, y, extras, y_hat)
 
         if mode is Mode.TEST:
             results = self.__post_test(results)
