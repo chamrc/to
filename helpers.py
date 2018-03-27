@@ -8,6 +8,59 @@ import pathlib
 import collections
 import torch.nn.functional as F
 import numpy as np
+from enum import IntEnum
+from inspect import signature
+
+#----------------------------------------------------------------------------------------------------------
+# Process module
+#----------------------------------------------------------------------------------------------------------
+
+
+def forward(module, args, kwargs):
+    assert (isinstance(module, torch.nn.Module))
+    args, kwargs = filter_args(module.forward, args, kwargs)
+    return module(*args, **kwargs)
+
+
+def filter_args(fn, args, kwargs, name=None):
+    sig = signature(fn)
+    pos, key = [], {}
+
+    if name is None:
+        name = fn.__name__
+
+    for k, v in sig.parameters.items():
+        if v.kind == ParameterKind.POSITIONAL_ONLY or \
+            (v.kind == ParameterKind.POSITIONAL_OR_KEYWORD and v.default == v.empty):
+            # Positional Parameter
+            if len(args) == 0:
+                raise Exception('Missing argument {} for "{}"'.format(v.name, name))
+            pos.append(args.pop(0))
+        elif v.kind == ParameterKind.KEYWORD_ONLY or \
+            (v.kind == ParameterKind.POSITIONAL_OR_KEYWORD and v.default != v.empty):
+            # Keyword Parameter
+            if v.name not in kwargs:
+                pos.append(v.default)
+            else:
+                pos.append(kwargs[v.name])
+                del kwargs[v.name]
+        elif v.kind == ParameterKind.VAR_POSITIONAL:
+            # Variable Positional Parameter, a.k.a *args
+            pos += args
+        elif v.kind == ParameterKind.VAR_KEYWORD:
+            # Variable Keyword Parameter, a.k.a **kwargs
+            key = kwargs
+
+    return pos, key
+
+
+class ParameterKind(IntEnum):
+    POSITIONAL_ONLY = 0
+    POSITIONAL_OR_KEYWORD = 1
+    VAR_POSITIONAL = 2
+    KEYWORD_ONLY = 3
+    VAR_KEYWORD = 4
+
 
 #----------------------------------------------------------------------------------------------------------
 # Sort and ArgSort

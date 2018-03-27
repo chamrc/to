@@ -11,31 +11,34 @@ class TextModel(NeuralNetwork):
         self.in_features = get(self.cfg, NeuralNetworkOptions.IN_CHANNELS.value, default=40)
         self.out_features = get(self.cfg, NeuralNetworkOptions.OUT_CHANNELS.value, default=47)
 
-    def __forward(self, h, lengths):
-        is_RNN = lambda x: isinstance(x, nn.modules.rnn.RNNBase)
+        start_lmd = lambda i, o, A: i >= 0 and not self.is_RNN(get(A, i - 1)) and self.is_RNN(o)
+        end_lmd = lambda i, o, A: i <= len(A) - 1 and self.is_RNN(o) and not self.is_RNN(get(A, i + 1))
+        self.starts = where(start_lmd, self.layers)
+        self.ends = where(end_lmd, self.layers)
 
-        starts = where(lambda i, o, A: i >= 0 and not is_RNN(get(A, i - 1)) and is_RNN(o), self.layers)
-        ends = where(lambda i, o, A: i <= len(A) - 1 and is_RNN(o) and not is_RNN(get(A, i + 1)), self.layers)
-
-        should_pack_padded = get(self.cfg, TextModelOptions.PACK_PADDED.value, default=False) and \
+        self.should_pack_padded = get(self.cfg, TextModelOptions.PACK_PADDED.value, default=False) and \
             len(starts) >= 0 and len(ends) >= 0
 
+    def is_RNN(self, x):
+        return isinstance(x, nn.modules.rnn.RNNBase)
+
+    def __forward(self, h, lengths=None):
         for i, layer in enumerate(self.layers):
-            if is_RNN(layer):
-                if should_pack_padded and i in starts:
+            if self.is_RNN(layer):
+                if self.should_pack_padded and i in self.starts:
                     h = nn.utils.rnn.pack_padded_sequence(h, lengths, batch_first=False)
 
                 layer.flatten_parameters()
                 h, _ = layer(h)
 
-                if should_pack_padded and i in ends:
+                if self.should_pack_padded and i in self.ends:
                     h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first=False)
             else:
-                h = layer(h)
+                h = forward(layer, [h, lengths], {})
 
         return h
 
-    def forward(self, inputs, lengths, forward=0, stochastic=False):
+    def forward(self, inputs, lengths=None, forward=0, stochastic=False):
         h = inputs.float()  # (n, t)
 
         h = self.__forward(h, lengths)

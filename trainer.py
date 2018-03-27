@@ -485,7 +485,8 @@ class Trainer(object):
         y_hat = None
         if has(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value):
             args, kwargs = get(self.event_handlers, TrainerEvents.MODEL_EXTRA_ARGS.value)(x, y, extras)
-            y_hat = self.model(to_variable(x), *args, **kwargs)
+            # y_hat = self.model(to_variable(x), *args, **kwargs)
+            y_hat = forward(self.model, [to_variable(x)] + args, kwargs)
         else:
             y_hat = self.model(to_variable(x))
 
