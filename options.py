@@ -29,8 +29,12 @@ class TrainerOptions(Enum):
     OPTIMIZER_ARGS = 'optimizer_args'  # Defaults to { 'lr': 0.01 }
     SCHEDULER = 'scheduler'  # Defaults to schedule on validation loss
     SCHEDULER_ARGS = 'scheduler_args'
+    SCHEDULE_VERBOSE = 'schedule_verbose'
+    SCHEDULE_FIRST = 'schedule_first'  # Run scheduler before or after train, default: before
+    SCHEDULE_BATCH_COUNT = 'schedule_batch_count'  # num of batch to use to get accuracy & loss from validation
+    SCHEDULE_ON_BATCH = 'schedule_on_batch'  # Call scheduler for each batch, instead of epoch
     SCHEDULE_ON_ACCURACY = 'schedule_on_accuracy'  # Only works if print_accuracy is True
-    SCHEDULE_ON_TRAIN_LOSS = 'schedule_on_train_loss'  # Schedule on train loss instead
+    SCHEDULE_ON_TRAIN_DATA = 'schedule_on_train_data'  # Schedule on train data instead
     LOSS_FN = 'loss_fn'  # Defaults to nn.CrossEntropyLoss
     AUTO_RELOAD_SAVED_MODEL = 'auto_reload_saved_model'
     DEV_MODE = 'dev_mode'  # Defaults to False

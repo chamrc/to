@@ -6,11 +6,12 @@ from .helpers import *
 
 class WSJ():
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, debug=True):
         self.cfg = cfg
         self.dev_set = None
         self.train_set = None
         self.test_set = None
+        self.debug = debug
         default_directory = os.path.join(csd(), 'data')
         self.directory = get(self.cfg, WSJOptions.WSJ_FOLDER.value, default=default_directory)
 
@@ -54,7 +55,8 @@ class WSJ():
         path = self.__get_path(data_type, is_label)
         if os.path.isfile(path):
             results = np.load(path, encoding='bytes')
-            p('Dataset "{}" has {} records.'.format(path, len(results)))
+            if self.debug:
+                p('Dataset "{}" has {} records.'.format(path, len(results)))
             return results
         return None
 

@@ -249,8 +249,8 @@ def w(text=''):
     sys.stdout.flush()
 
 
-def p(text='', show_debug=True):
-    if show_debug:
+def p(text='', debug=True):
+    if debug:
         print(
             '{} - {}() #{}: {}'.format(
                 os.path.relpath(inspect.stack()[1][1], os.getcwd()),
