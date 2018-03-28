@@ -3,6 +3,8 @@ import os
 from .options import *
 from .helpers import *
 
+DEV, TRAIN, TEST = range(3)
+
 
 class WSJ():
 

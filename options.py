@@ -1,6 +1,10 @@
-from enum import Enum
+from enum import Enum, IntEnum
+import torch.nn as nn
 
-DEV, TRAIN, TEST = range(3)
+#----------------------------------------------------------------------------------------------------------
+# Data
+#----------------------------------------------------------------------------------------------------------
+
 data_type_name = lambda x: ['dev', 'train', 'test'][x]
 
 
@@ -13,14 +17,9 @@ class WSJOptions(Enum):
     TEST_DATA_FILE = 'test_data_file'  # Defaults to 'test-features.npy'
 
 
-class NeuralNetworkOptions(Enum):
-    IN_CHANNELS = 'in_channels'  # *MUST*
-    OUT_CHANNELS = 'out_channels'  # *MUST*
-    LAYERS = 'layers'
-
-
-class TextModelOptions(Enum):
-    PACK_PADDED = 'pack_padded'  # Defaults to False
+#----------------------------------------------------------------------------------------------------------
+# Trainer
+#----------------------------------------------------------------------------------------------------------
 
 
 class TrainerOptions(Enum):
@@ -29,6 +28,7 @@ class TrainerOptions(Enum):
     OPTIMIZER_ARGS = 'optimizer_args'  # Defaults to { 'lr': 0.01 }
     SCHEDULER = 'scheduler'  # Defaults to schedule on validation loss
     SCHEDULER_ARGS = 'scheduler_args'
+    SCHEDULER_KWARGS = 'scheduler_kwargs'
     SCHEDULE_VERBOSE = 'schedule_verbose'
     SCHEDULE_FIRST = 'schedule_first'  # Run scheduler before or after train, default: before
     SCHEDULE_BATCH_COUNT = 'schedule_batch_count'  # num of batch to use to get accuracy & loss from validation
@@ -43,6 +43,101 @@ class TrainerOptions(Enum):
     CSV_FIELD_NAMES = 'csv_field_names'  # Defaults to ['id', 'label']
     # Generate test output (batch, 1) from y_hat (batch, classes)
     GENERATE_AXIS = 'generate_axis'  # Defaults to 1
+
+
+#----------------------------------------------------------------------------------------------------------
+# Initialization
+#----------------------------------------------------------------------------------------------------------
+
+
+class InitOptions(Enum):
+    """
+    Defaults to:
+        {
+            'Conv': {
+                'weight': Init.xavier_uniform(),
+                'bias': Init.uniform(),
+            },
+            nn.Linear: {
+                'weight': Init.xavier_uniform(),
+                'bias': Init.uniform(),
+            },
+            'RNNBase': {
+                'weight': Init.orthogonal(),
+                'bias': Init.uniform(),
+            },
+        }
+    """
+    INIT_OPTIONS = 'init_options'
+
+
+#----------------------------------------------------------------------------------------------------------
+# Networks
+#----------------------------------------------------------------------------------------------------------
+
+
+class NeuralNetworkOptions(Enum):
+    IN_CHANNELS = 'in_channels'  # *MUST*
+    OUT_CHANNELS = 'out_channels'  # *MUST*
+    LAYERS = 'layers'
+
+
+class RNNModelOptions(Enum):
+    IN_CHANNELS = 'in_channels'  # *MUST*
+    OUT_CHANNELS = 'out_channels'  # *MUST*
+    LAYERS = 'layers'
+    PACK_PADDED = 'pack_padded'  # Defaults to False
+
+
+class ResNetOptions(Enum):
+    IN_CHANNELS = 'in_channels'  # *MUST*
+    OUT_CHANNELS = 'out_channels'  # *MUST*
+    RESNET_TYPE = 'resnet_type'  # Load default ResNet models: (18, 34, 50, 101, 152)
+    RESNET_NONLINEARITY = 'resnet_nonlinearity'  # Defaults to nn.ReLU
+    RESNET_NO_FC = 'resnet_no_fc'  # Defaults to False
+    RESNET_DIMENSIONS = 'resnet_dimensions'  # Defaults to 2
+    """
+    Customize ResNet, defaults to NetworkBlock
+    BasicBlock -> (ResNet 18)
+    BasicBlock -> (ResNet 34)
+    NetworkBlock -> (ResNet 50)
+    NetworkBlock -> (ResNet 101)
+    NetworkBlock -> (ResNet 152)
+    """
+    RESNET_BLOCK = 'resnet_block'  # Customize ResNet, defaults to NetworkBlock (ResNet 152)
+    """
+    Customize ResNet, defaults to [3, 8, 36, 3] (ResNet 152)
+    [2, 2, 2, 2] -> (ResNet 18)
+    [3, 4, 6, 3] -> (ResNet 34)
+    [3, 4, 6, 3] -> (ResNet 50)
+    [3, 4, 23, 3] -> (ResNet 101)
+    [3, 8, 36, 3] -> (ResNet 152)
+    """
+    RESNET_LAYERS = 'resnet_layers'
+    """
+    Customize in/first block, defaults to {
+        'conv_kernel_size': 7,
+        'conv_stride': 2,
+        'conv_padding': 3,
+        'maxpool_kernel_size': 3,
+        'maxpool_stride': 2,
+        'maxpool_padding': 1
+    }
+    """
+    RESNET_INBLOCK = 'resnet_inblock'
+    """
+    Customize out/last block, defaults to {
+        'adaptive_avgpool': False,  # Adaptive AvgPool or regular AvgPool
+        'avgpool_kernel_size': 7,
+        'avgpool_stride': 1
+    }
+    """
+    RESNET_OUTBLOCK = 'resnet_outblock'
+
+
+#----------------------------------------------------------------------------------------------------------
+# Trainer Events
+#----------------------------------------------------------------------------------------------------------
 
 
 class TrainerEvents(Enum):  # Events that can be binded

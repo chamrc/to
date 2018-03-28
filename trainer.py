@@ -72,10 +72,11 @@ class Trainer(object):
         self.optimizer = Optimizer(self.model.parameters(), **optim_args)
 
         Scheduler = get(self.cfg, TrainerOptions.SCHEDULER.value, default=None)
-        sched_args = get(self.cfg, TrainerOptions.SCHEDULER_ARGS.value, default={})
+        sched_args = get(self.cfg, TrainerOptions.SCHEDULER_ARGS.value, default=[])
+        sched_kwargs = get(self.cfg, TrainerOptions.SCHEDULER_KWARGS.value, default={})
         self.scheduler = None
         if Scheduler is not None:
-            self.scheduler = Scheduler(self.optimizer, **sched_args)
+            self.scheduler = Scheduler(self.optimizer, *sched_args, **sched_kwargs)
 
     def __init_loss_fn(self):
         Fn = get(self.cfg, TrainerOptions.LOSS_FN.value, default=nn.CrossEntropyLoss)
@@ -118,7 +119,7 @@ class Trainer(object):
 
             self.current_cfg = filename(path).replace('.py', '')
             self.current_cfg_path = path
-        except Exception as e:
+        except IOError as e:
             raise Exception('Configuration file not found at "{}".'.format(path))
 
         return self
@@ -519,7 +520,8 @@ class Trainer(object):
         old_lr = self._get_lr()
         use_percentage = get(self.cfg, TrainerOptions.SCHEDULE_ON_ACCURACY.value, default=False)
         value = percentage if use_percentage else loss
-        self.scheduler.step(value)
+        args, kwargs = filter_args(self.scheduler.step, [value], {})
+        self.scheduler.step(*args, **kwargs)
         new_lr = self._get_lr()
 
         verbose = get(self.cfg, TrainerOptions.SCHEDULE_VERBOSE.value, default=False)

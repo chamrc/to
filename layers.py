@@ -1,9 +1,44 @@
 import torch
 import torch.nn as nn
 import math
+from .helpers import *
 
 
-class PackPaddedLayer(torch.nn.Module):
+class BaseLayer(torch.nn.Module):
+
+    def __repr__(self):
+        return self.__class__.__name__ + '()'
+
+
+class TransposeLayer(BaseLayer):
+
+    def __init__(self, d1=0, d2=1):
+        super(TransposeLayer, self).__init__()
+        self.d1 = d1
+        self.d2 = d2
+
+    def forward(self, h):
+        return h.transpose(self.d1, self.d2)
+
+
+class PermuteLayer(BaseLayer):
+
+    def __init__(self, *args):
+        super(PermuteLayer, self).__init__()
+        self.order = args
+
+    def forward(self, h):
+        return h.permute(*self.order)
+
+
+class LogShapeLayer(BaseLayer):
+
+    def forward(self, h):
+        p(h.shape)
+        return h
+
+
+class PackPaddedLayer(BaseLayer):
 
     def __init__(self, batch_first=False):
         super(PackPaddedLayer, self).__init__()
@@ -14,7 +49,7 @@ class PackPaddedLayer(torch.nn.Module):
         return h
 
 
-class PadPackedLayer(torch.nn.Module):
+class PadPackedLayer(BaseLayer):
 
     def __init__(self, batch_first=False):
         super(PadPackedLayer, self).__init__()
@@ -25,13 +60,13 @@ class PadPackedLayer(torch.nn.Module):
         return h
 
 
-class Flatten(torch.nn.Module):
+class Flatten(BaseLayer):
 
     def forward(self, input):
         return input.view(input.size(0), -1)
 
 
-class MeanPoolingLayer(torch.nn.Module):
+class MeanPoolingLayer(BaseLayer):
 
     def __init__(self):
         super(MeanPoolingLayer, self).__init__()
@@ -39,6 +74,3 @@ class MeanPoolingLayer(torch.nn.Module):
     def forward(self, input, dim=2):
         length = input.shape[2]
         return torch.sum(input, dim=2) / length
-
-    def __repr__(self):
-        return self.__class__.__name__ + '()'

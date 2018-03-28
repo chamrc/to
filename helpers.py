@@ -7,9 +7,12 @@ import inspect
 import pathlib
 import collections
 import torch.nn.functional as F
+import torch.nn as nn
 import numpy as np
 from enum import IntEnum
 from inspect import signature
+from .options import *
+from .init import *
 
 #----------------------------------------------------------------------------------------------------------
 # Process module
@@ -18,7 +21,7 @@ from inspect import signature
 
 def forward(module, args, kwargs):
     assert (isinstance(module, torch.nn.Module))
-    args, kwargs = filter_args(module.forward, args, kwargs)
+    args, kwargs = filter_args(module.forward, args, kwargs, module)
     return module(*args, **kwargs)
 
 
@@ -310,6 +313,12 @@ def get(o, *k, default=None):
             return default
 
 
+def inheritance(cls):
+    if not inspect.isclass(cls):
+        cls = cls.__class__
+    return list(inspect.getmro(cls))
+
+
 #----------------------------------------------------------------------------------------------------------
 # PyTorch helpers
 #----------------------------------------------------------------------------------------------------------
@@ -330,63 +339,41 @@ def to_variable(tensor):
     return torch.autograd.Variable(tensor)
 
 
-def init_parameters(cfg):
+def init_model_parameters(module):
+    init_options = get(module.cfg, InitOptions.INIT_OPTIONS.value)
+    if init_options is None:
+        init_options = {
+            'Conv': {
+                'weight': Init.xavier_uniform(),
+                'bias': Init.uniform(),
+            },
+            nn.Linear: {
+                'weight': Init.xavier_uniform(),
+                'bias': Init.uniform(),
+            },
+            'RNNBase': {
+                'weight': Init.orthogonal(),
+                'bias': Init.uniform(),
+            },
+        }
 
-    def init_params(m):
-        if type(m) == torch.nn.Linear:
-            init_layer_parameters(m, cfg)
-        elif type(m) == torch.nn.Conv1d or \
-         type(m) == torch.nn.Conv2d or \
-         type(m) == torch.nn.Conv3d:
-            init_layer_parameters(m, cfg)
+    for m in module.modules():
+        for k, v in init_options.items():
+            should_init = False
+            if is_str(k):
+                classes = inheritance(m)
+                should_init = any([k in c.__name__ for c in classes])
+            elif isinstance(k, nn.Module) and isinstance(m, k):
+                should_init = True
 
-    return init_params
+            if should_init:
+                map(lambda x: init_layer_parameters(m, x[0], x[1]), list(zip(v.keys(), v.values())))
 
 
-def init_layer_parameters(m, cfg):
-    init_uniform = get(cfg, 'init_uniform') if has(cfg, 'uniform') else False
-    if init_uniform:
-        torch.nn.init.uniform(m.weight)
-
-    init_normal = get(cfg, 'init_normal') if has(cfg, 'normal') else False
-    if init_normal:
-        torch.nn.init.normal(m.weight)
-
-    init_constant = get(cfg, 'init_constant') if has(cfg, 'constant') else False
-    if init_constant:
-        torch.nn.init.constant(m.weight)
-
-    init_eye = get(cfg, 'init_eye') if has(cfg, 'eye') else False
-    if init_eye:
-        torch.nn.init.eye(m.weight)
-
-    init_dirac = get(cfg, 'init_dirac') if has(cfg, 'dirac') else False
-    if init_dirac:
-        torch.nn.init.dirac(m.weight)
-
-    init_xavier_uniform = get(cfg, 'init_xavier_uniform') if has(cfg, 'xavier_uniform') else False
-    if init_xavier_uniform:
-        torch.nn.init.xavier_uniform(m.weight)
-
-    init_xavier_normal = get(cfg, 'init_xavier_normal') if has(cfg, 'xavier_normal') else False
-    if init_xavier_normal:
-        torch.nn.init.xavier_normal(m.weight)
-
-    init_kaiming_uniform = get(cfg, 'init_kaiming_uniform') if has(cfg, 'kaiming_uniform') else False
-    if init_kaiming_uniform:
-        torch.nn.init.kaiming_uniform(m.weight)
-
-    init_kaiming_normal = get(cfg, 'init_kaiming_normal') if has(cfg, 'kaiming_normal') else False
-    if init_kaiming_normal:
-        torch.nn.init.kaiming_normal(m.weight)
-
-    init_orthogonal = get(cfg, 'init_orthogonal') if has(cfg, 'orthogonal') else False
-    if init_orthogonal:
-        torch.nn.init.orthogonal(m.weight)
-
-    init_zero_bias = get(cfg, 'init_zero_bias') if has(cfg, 'init_zero_bias') else False
-    if init_zero_bias and hasattr(m, 'bias') and hasattr(m.bias, 'data'):
-        m.bias.data.zero_()
+def init_layer_parameters(m, key, fn):
+    for name, param in m.named_parameters():
+        if key in name:
+            fn.apply(param)
 
 
 def collate(data, axis=1, dim=2, mode='constant', value=0, min_len=None, concat_labels=False):

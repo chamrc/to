@@ -14,6 +14,7 @@ class Logger(object):
     def __reset(self, mode=Mode.TRAIN):
         self.print_interval = get(self.trainer.cfg, TrainerOptions.PRINT_INVERVAL.value, default=100)
         self.print_accuracy = get(self.trainer.cfg, TrainerOptions.PRINT_ACCURACY.value, default=True)
+        self.batch_size = get(self.trainer.cfg, TrainerOptions.BATCH_SIZE.value, default=64)
 
         self.mode = mode
         self.t0 = time.time()
@@ -72,9 +73,10 @@ class Logger(object):
         # get_lr = getattr(self.trainer, '__get_lr')
         # lr = get_lr()
         lr = self.trainer._get_lr()
+        count = self.batch_count * self.batch_size
         if self.mode is Mode.TEST:
             template = 'lr {} => Done testing batch {} count {}. Time elapsed: {:.2f} | {:.2f} seconds.'
-            p(template.format(lr, self.batch_count, self.all_count, batch_time, total_time), debug=False)
+            p(template.format(lr, self.batch_count, count, batch_time, total_time), debug=False)
         else:
             percentage = (self.interval_correct / max(self.interval_count, 1)) * 100
 
@@ -88,7 +90,7 @@ class Logger(object):
             mode_name = 'training' if self.mode is Mode.TRAIN else 'validating'
 
             min_loss, mean_loss, _ = self.get_loss()
-            p(template.format(lr, mode_name, epoch, self.batch_count, self.all_count, \
+            p(template.format(lr, mode_name, epoch, self.batch_count, count, \
                 batch_time, total_time, percentage, min_loss, mean_loss), debug=False)
 
     def get_percentage(self):

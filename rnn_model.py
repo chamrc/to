@@ -3,21 +3,26 @@ from .nn import *
 from .helpers import *
 
 
-class TextModel(NeuralNetwork):
+class RNNModel(NeuralNetwork):
 
     def __init__(self, cfg):
-        super(TextModel, self).__init__(cfg)
+        super(RNNModel, self).__init__(cfg)
 
-        self.in_features = get(self.cfg, NeuralNetworkOptions.IN_CHANNELS.value, default=40)
-        self.out_features = get(self.cfg, NeuralNetworkOptions.OUT_CHANNELS.value, default=47)
+        self.in_features = get(self.cfg, RNNModelOptions.IN_CHANNELS.value, default=40)
+        self.out_features = get(self.cfg, RNNModelOptions.OUT_CHANNELS.value, default=47)
 
         start_lmd = lambda i, o, A: i >= 0 and not self.is_RNN(get(A, i - 1)) and self.is_RNN(o)
         end_lmd = lambda i, o, A: i <= len(A) - 1 and self.is_RNN(o) and not self.is_RNN(get(A, i + 1))
         self.starts = where(start_lmd, self.layers)
         self.ends = where(end_lmd, self.layers)
 
-        self.should_pack_padded = get(self.cfg, TextModelOptions.PACK_PADDED.value, default=False) and \
+        self.should_pack_padded = get(self.cfg, RNNModelOptions.PACK_PADDED.value, default=False) and \
             len(self.starts) >= 0 and len(self.ends) >= 0
+
+        self._init_parameters()
+
+    def _init_parameters(self):
+        init_model_parameters(self)
 
     def is_RNN(self, x):
         return isinstance(x, nn.modules.rnn.RNNBase)
