@@ -17,7 +17,7 @@ class TextModel(NeuralNetwork):
         self.ends = where(end_lmd, self.layers)
 
         self.should_pack_padded = get(self.cfg, TextModelOptions.PACK_PADDED.value, default=False) and \
-            len(starts) >= 0 and len(ends) >= 0
+            len(self.starts) >= 0 and len(self.ends) >= 0
 
     def is_RNN(self, x):
         return isinstance(x, nn.modules.rnn.RNNBase)
