@@ -1,4 +1,5 @@
 import torch.nn as nn
+from .rnn import is_rnn
 from .nn import *
 from .helpers import *
 
@@ -11,8 +12,8 @@ class RNNModel(NeuralNetwork):
         self.in_features = get(self.cfg, RNNModelOptions.IN_CHANNELS.value, default=40)
         self.out_features = get(self.cfg, RNNModelOptions.OUT_CHANNELS.value, default=47)
 
-        start_lmd = lambda i, o, A: i >= 0 and not self.is_RNN(get(A, i - 1)) and self.is_RNN(o)
-        end_lmd = lambda i, o, A: i <= len(A) - 1 and self.is_RNN(o) and not self.is_RNN(get(A, i + 1))
+        start_lmd = lambda i, o, A: i >= 0 and not is_rnn(get(A, i - 1)) and is_rnn(o)
+        end_lmd = lambda i, o, A: i <= len(A) - 1 and is_rnn(o) and not is_rnn(get(A, i + 1))
         self.starts = where(start_lmd, self.layers)
         self.ends = where(end_lmd, self.layers)
 
@@ -24,16 +25,14 @@ class RNNModel(NeuralNetwork):
     def _init_parameters(self):
         init_model_parameters(self)
 
-    def is_RNN(self, x):
-        return isinstance(x, nn.modules.rnn.RNNBase)
-
     def __forward(self, h, lengths=None):
         for i, layer in enumerate(self.layers):
-            if self.is_RNN(layer):
+            if is_rnn(layer):
                 if self.should_pack_padded and i in self.starts:
                     h = nn.utils.rnn.pack_padded_sequence(h, lengths, batch_first=False)
 
-                layer.flatten_parameters()
+                # if is_pytorch_rnn(layer):
+                #     layer.flatten_parameters()
                 h, _ = layer(h)
 
                 if self.should_pack_padded and i in self.ends:

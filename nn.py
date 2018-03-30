@@ -24,3 +24,6 @@ class NeuralNetwork(torch.nn.Module):
         for layer in self.layers:
             data = layer(data)
         return data
+
+    def __repr__(self):
+        return self.__class__.__name__ + '()'

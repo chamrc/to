@@ -2,7 +2,6 @@ import re
 import os
 import traceback
 import importlib.util
-import pprint
 
 from prompt_toolkit import prompt
 from prompt_toolkit.history import FileHistory
@@ -165,13 +164,13 @@ class Trainer(object):
     # Model
     #----------------------------------------------------------------------------------------------------------
 
-    def __adjust_lr(self, new_lr):
+    def adjust_lr(self, new_lr):
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = new_lr
 
         self.cfg.learning_rate = new_lr
         if has(self.cfg, TrainerOptions.OPTIMIZER_ARGS.value, 'lr'):
-            self.cfg.optim_args['lr'] = new_lr
+            get(self.cfg, TrainerOptions.OPTIMIZER_ARGS.value)['lr'] = new_lr
 
         return self
 
@@ -341,10 +340,10 @@ class Trainer(object):
             v = getattr(self.cfg, k)
             configs.append((k, v))
         max_key_len = max([len(k) for k, _ in configs])
-        pp = pprint.PrettyPrinter(indent=4, compact=True)
+
         for k, v in configs:
             w('{}{} :    {}'.format(k, ' ' * (max_key_len - len(k)), parameter))
-            w(re.sub('^    ', ' ' * (max_key_len + 10), pp.pformat(v), flags=re.M))
+            w(re.sub('^    ', ' ' * (max_key_len + 6), ff(v, prefix='    '), flags=re.M))
             print(reset)
 
         return self
@@ -408,7 +407,7 @@ class Trainer(object):
         p('Setting configuration key "{}" to "{}"'.format(key, val))
 
         if key == 'learning_rate':
-            self.__adjust_lr(num(val))
+            self.adjust_lr(num(val))
         else:
             cmd = 'self.cfg.{} = {}'.format(key, val)
             try:
@@ -465,7 +464,13 @@ class Trainer(object):
         else:
             loss = self.loss_fn(y_hat, to_variable(y).long().squeeze())  # Compute losses
 
-        logger.log_loss(loss.data.cpu().numpy())
+        extra_log_msg = {}
+        if has(self.event_handlers, TrainerEvents.EXTRA_LOG_MSG.value):
+            result = get(self.event_handlers, TrainerEvents.EXTRA_LOG_MSG.value)(mode, x, y, extras, y_hat)
+            if result is not None:
+                extra_log_msg = result
+
+        logger.log_loss(loss.data.cpu().numpy(), **extra_log_msg)
         return loss
 
     def __propagate_loss(self, mode, x, y, extras, y_hat, logger):
@@ -611,7 +616,8 @@ class Trainer(object):
         return self.test(Mode.VALIDATE)
 
     def test(self, mode=Mode.TEST):
-        dataloader = self.__get_dataloader(TEST)
+        data_type = TEST if mode == Mode.TEST else DEV
+        dataloader = self.__get_dataloader(data_type)
 
         self.logger.start(mode)
         self.logger.start_epoch()

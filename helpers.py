@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 import sys
 import glob
@@ -243,6 +244,19 @@ def is_dict(i):
 
 
 #----------------------------------------------------------------------------------------------------------
+# Replace
+#----------------------------------------------------------------------------------------------------------
+
+
+def lreplace(s, old, new, count):
+    return s.replace(old, new, count)
+
+
+def rreplace(s, old, new, count):
+    return (s[::-1].replace(old[::-1], new[::-1], count))[::-1]
+
+
+#----------------------------------------------------------------------------------------------------------
 # Print and Log
 #----------------------------------------------------------------------------------------------------------
 
@@ -263,6 +277,78 @@ def p(text='', debug=True):
         )
     else:
         print('{}'.format(text))
+
+
+def ww(o, tab='    ', prefix=''):
+    s = '{}'.format(o)
+    s = prefix + _pprint(s, tab, '').replace('\n', '\n' + prefix)
+    w(s)
+
+
+def pp(o, tab='    ', prefix='', debug=False):
+    s = '{}'.format(o)
+    s = prefix + _pprint(s, tab, '').replace('\n', '\n' + prefix)
+    p(s, debug=debug)
+
+
+def ff(s, tab='    ', prefix=''):
+    s = '{}'.format(s)
+    s = s.replace(', ', ',')
+    r = []
+
+    def is_named_arg(idx):
+        return beyond(s, idx, lambda i, c, s: c == '=', lambda i, c, s: c in [',', ')'])
+
+    def is_class(idx):
+        return beyond(s, idx, lambda i, c, s: c.isupper(), lambda i, c, s: c in [',', ')'])
+
+    for i, c in enumerate(s):
+        r.append(c)
+        if c == '[' or c == '{':
+            prefix = prefix + tab
+            r.append('\n')
+            r.append(prefix)
+        elif c == '(':
+            prefix = prefix + tab
+            if is_class(i):
+                r.append('\n')
+                r.append(prefix)
+        elif c == ']' or c == '}':
+            prefix = rreplace(prefix, tab, '', 1)
+            r.pop(-1)
+            r.append('\n')
+            r.append(prefix)
+            r.append(c)
+        elif c == ')':
+            prefix = rreplace(prefix, tab, '', 1)
+        elif c == ',':
+            if is_named_arg(i) or is_class(i):
+                r.append('\n')
+                r.append(prefix)
+    return ''.join(r)
+
+
+#----------------------------------------------------------------------------------------------------------
+# Look ahead & Look beyond
+#----------------------------------------------------------------------------------------------------------
+
+
+def ahead(A, i, lmd, brk):
+    for j in range(0, i):
+        o = A[j]
+        if brk(j, o, A):
+            return False
+        elif lmd(j, o, A):
+            return True
+
+
+def beyond(A, i, lmd, brk):
+    for j in range(i + 1, len(A)):
+        o = A[j]
+        if brk(j, o, A):
+            return False
+        elif lmd(j, o, A):
+            return True
 
 
 #----------------------------------------------------------------------------------------------------------

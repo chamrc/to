@@ -20,6 +20,9 @@ class TransposeLayer(BaseLayer):
     def forward(self, h):
         return h.transpose(self.d1, self.d2)
 
+    def __repr__(self):
+        return self.__class__.__name__ + '({}, {}})'.format(self.d1, self.d2)
+
 
 class PermuteLayer(BaseLayer):
 
@@ -29,6 +32,9 @@ class PermuteLayer(BaseLayer):
 
     def forward(self, h):
         return h.permute(*self.order)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '{}'.format(tuple(self.order)).replace(',)', ')')
 
 
 class LogShapeLayer(BaseLayer):

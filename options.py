@@ -144,6 +144,9 @@ class TrainerEvents(Enum):  # Events that can be binded
     # Called when loss is being computed.
     # fn(mode, x, y, extras, y_hat) => loss
     COMPUTE_LOSS = 'compute_loss'
+    # Called in training and validating
+    # fn(mode, x, y, extra, y_hat) => extra_logs ({'name': val})
+    EXTRA_LOG_MSG = 'extra_log_msg'
     # Called when dataloader is being loaded to add collate_fn and sampler.
     # fn(self.cfg, data_type, dataset) => dataloader
     CUSTOMIZE_DATALOADER = 'customize_dataloader'
