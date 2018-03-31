@@ -1,8 +1,8 @@
 import torch
 from torch import nn
 from enum import IntEnum
-from .helpers import *
-from .options import *
+from ..utils.helpers import *
+from ..options import *
 
 
 class Mode(IntEnum):

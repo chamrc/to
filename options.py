@@ -8,8 +8,8 @@ import torch.nn as nn
 data_type_name = lambda x: ['dev', 'train', 'test'][x]
 
 
-class WSJOptions(Enum):
-    WSJ_FOLDER = 'wsj_folder'  # Defaults to 'data'
+class DataOptions(Enum):
+    Data_FOLDER = 'wsj_folder'  # Defaults to 'data'
     DEV_DATA_FILE = 'dev_data_file'  # Defaults to 'dev-features.npy'
     DEV_LABELS_FILE = 'dev_labels_file'  # Defaults to 'dev-labels.npy'
     TRAIN_DATA_FILE = 'train_data_file'  # Defaults to 'train-features.npy'

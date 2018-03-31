@@ -1,7 +1,7 @@
 import torch.nn as nn
-from .rnn import is_rnn
-from .nn import *
-from .helpers import *
+from ..layers.rnn import is_rnn
+from .base import *
+from ..utils.helpers import *
 
 
 class RNNModel(NeuralNetwork):

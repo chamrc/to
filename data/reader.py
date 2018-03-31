@@ -1,12 +1,12 @@
 import numpy as np
 import os
-from .options import *
-from .helpers import *
+from ..options import *
+from ..utils.helpers import *
 
 DEV, TRAIN, TEST = range(3)
 
 
-class WSJ():
+class DataReader():
 
     def __init__(self, cfg, debug=True):
         self.cfg = cfg
@@ -15,7 +15,7 @@ class WSJ():
         self.test_set = None
         self.debug = debug
         default_directory = os.path.join(csd(), 'data')
-        self.directory = get(self.cfg, WSJOptions.WSJ_FOLDER.value, default=default_directory)
+        self.directory = get(self.cfg, DataOptions.Data_FOLDER.value, default=default_directory)
 
     @property
     def dev(self):
@@ -40,9 +40,9 @@ class WSJ():
 
     def __get_path(self, data_type, is_label):
         options = [
-            (WSJOptions.DEV_DATA_FILE, WSJOptions.DEV_LABELS_FILE), \
-            (WSJOptions.TRAIN_DATA_FILE, WSJOptions.TRAIN_LABELS_FILE), \
-            (WSJOptions.TEST_DATA_FILE, None)
+            (DataOptions.DEV_DATA_FILE, DataOptions.DEV_LABELS_FILE), \
+            (DataOptions.TRAIN_DATA_FILE, DataOptions.TRAIN_LABELS_FILE), \
+            (DataOptions.TEST_DATA_FILE, None)
         ]
         key = options[data_type][is_label]
 

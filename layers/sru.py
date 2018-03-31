@@ -11,6 +11,8 @@ from torch.autograd import Function, Variable
 from cupy.cuda import function
 from pynvrtc.compiler import Program
 from collections import namedtuple
+from torch.nn.modules.rnn import PackedSequence
+from .rnn import _BaseRNNModule
 
 SRU_CODE = """
 extern "C" {
@@ -558,7 +560,7 @@ def SRU_Compute_CPU(activation_type, d, bidirectional=False, scale_x=1):
     return sru_compute_cpu
 
 
-class SRUCell(nn.Module):
+class SRUCell(_BaseRNNModule):
 
     def __init__(
         self,
@@ -691,7 +693,7 @@ class SRUCell(nn.Module):
         return Variable(w.new(*size).bernoulli_(1 - p).div_(1 - p))
 
 
-class SRU(nn.Module):
+class SRU(_BaseRNNModule):
 
     def __init__(
         self,
@@ -750,11 +752,18 @@ class SRU(nn.Module):
             l.set_bias(bias_val)
 
     def forward(self, h, c0=None, return_hidden=True):
-        assert h.dim() == 3  # (len, batch, n_in)
+        is_packed = isinstance(h, PackedSequence)
+
+        if is_packed:
+            h, batch_sizes = h
+        else:
+            batch_sizes = None
+
+        assert h.dim() == 2 or h.dim() == 3  # (len, batch, n_in)
 
         dir_ = 2 if self.bidirectional else 1
         if c0 is None:
-            zeros = Variable(h.data.new(h.size(1), self.n_out * dir_).zero_())
+            zeros = Variable(h.data.new(h.size(-2), self.n_out * dir_).zero_())
             c0 = [zeros for i in range(self.depth)]
         else:
             assert c0.dim() == 3  # (depth, batch, n_out*dir_)
@@ -765,6 +774,9 @@ class SRU(nn.Module):
             h, c = rnn(h, c0[i])
             h = self.ln_lst[i](h) if self.use_layer_norm else h
             lstc.append(c)
+
+        if is_packed:
+            h = PackedSequence(h, batch_sizes)
 
         if return_hidden:
             return h, torch.stack(lstc)

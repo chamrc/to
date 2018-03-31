@@ -1,6 +1,6 @@
 import time
 from torch.utils.data import TensorDataset
-from .wsj import *
+from .reader import *
 
 
 class DataSet(TensorDataset):
@@ -8,7 +8,7 @@ class DataSet(TensorDataset):
     def __init__(self, cfg, data_type, debug=True):
         self.cfg, self.data_type = cfg, data_type
 
-        wsj = WSJ(self.cfg, debug)
+        wsj = DataReader(self.cfg, debug)
 
         if debug:
             p('Loading raw dataset "{}".'.format(data_type_name(data_type)))

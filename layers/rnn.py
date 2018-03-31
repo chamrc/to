@@ -2,9 +2,6 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.modules.rnn import PackedSequence
-from .attention import AttentionLayer
-from .rnn_weight_drop import WeightDrop
-from .rnn_weight_norm import weight_norm as wn
 
 
 def RNN(
@@ -72,8 +69,7 @@ def is_pytorch_rnn(x):
 
 def is_rnn(x):
     return isinstance(x, nn.modules.rnn.RNNBase) or \
-        isinstance(x, _BaseRNNModule) or \
-        isinstance(x, _BaseRNNSequential)
+        isinstance(x, _BaseRNNModule)
 
 
 #----------------------------------------------------------------------------------------------------------
@@ -82,12 +78,6 @@ def is_rnn(x):
 
 
 class _BaseRNNModule(nn.Module):
-
-    def __repr__(self):
-        return self.__class__.__name__ + '()'
-
-
-class _BaseRNNSequential(nn.Sequential):
 
     def __repr__(self):
         return self.__class__.__name__ + '()'

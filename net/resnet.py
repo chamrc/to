@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from enum import Enum, IntEnum
-from .helpers import *
-from .options import *
+from ..utils.helpers import *
+from ..options import *
 
 
 class _Fn(IntEnum):

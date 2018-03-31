@@ -2,9 +2,9 @@ import numpy as np
 import time
 import re
 from collections import defaultdict
-from .options import *
+from ..options import *
 from .helpers import *
-from .nn import Mode
+from ..net.base import Mode
 
 
 class Logger(object):

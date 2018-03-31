@@ -12,8 +12,22 @@ import torch.nn as nn
 import numpy as np
 from enum import IntEnum
 from inspect import signature
-from .options import *
+from ..options import *
 from .init import *
+
+#----------------------------------------------------------------------------------------------------------
+# Decorators
+#----------------------------------------------------------------------------------------------------------
+
+
+def static(varname, value):
+
+    def decorate(func):
+        setattr(func, varname, value)
+        return func
+
+    return decorate
+
 
 #----------------------------------------------------------------------------------------------------------
 # Process module
@@ -82,20 +96,6 @@ def sort(lst, indexes=None, reverse=False):
         result = [lst[i] for i in indexes]
         return result[::-1] if reverse else result
     return sorted(lst)
-
-
-#----------------------------------------------------------------------------------------------------------
-# Decorators
-#----------------------------------------------------------------------------------------------------------
-
-
-def static(varname, value):
-
-    def decorate(func):
-        setattr(func, varname, value)
-        return func
-
-    return decorate
 
 
 #----------------------------------------------------------------------------------------------------------

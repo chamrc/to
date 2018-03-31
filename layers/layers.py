@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-from .helpers import *
+from ..utils.helpers import *
 
 
 class BaseLayer(torch.nn.Module):

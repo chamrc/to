@@ -13,12 +13,12 @@ import torch.optim as optim
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 
-from .helpers import *
+from .utils.cli import *
+from .utils.helpers import *
+from .utils.batch_logger import *
 from .options import *
-from .nn import *
-from .dataset import *
-from .cli import *
-from .batch_logger import *
+from .net import *
+from .data.dataset import *
 
 
 class Trainer(object):
