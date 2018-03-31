@@ -55,9 +55,15 @@ class Trainer(object):
         self.reset()
 
     def reset(self):
+        self.__init__folder()
         self.__init_model()
         self.__init_optim()
         self.__init_loss_fn()
+
+    def __init_folder(self):
+        self.cfg_folder = get(self.cfg, TrainerOptions.CFG_FOLDER.value, default='configurations')
+        self.models_folder = get(self.cfg, TrainerOptions.MODELS_FOLDER.value, default='models')
+        self.submissions_folder = get(self.cfg, TrainerOptions.SUBMISSIONS_FOLDER.value, default='submissions')
 
     def __init_model(self):
         self.model = self.Model(self.cfg)
@@ -338,6 +344,9 @@ class Trainer(object):
         print('Epoch:\t\t\t{}{}{}'.format(color, self.epoch_ran, reset))
         print('Configuration:\t\t{}{}{}'.format(color, self.current_cfg, reset))
         print('Configuration Path:\t{}{}.py{}'.format(color, self.current_cfg_path, reset))
+        print('Configuration Folder:\t\t\t{}{}{}'.format(color, self.cfg_folder, reset))
+        print('Models Folder:\t\t\t{}{}{}'.format(color, self.models_folder, reset))
+        print('Submissions Folder:\t\t\t{}{}{}'.format(color, self.submissions_folder, reset))
         print()
         configs = []
         for k in list(filter(lambda x: not x.startswith('__'), dir(self.cfg))):
@@ -574,6 +583,33 @@ class Trainer(object):
         logger.log_batch(mode, x, y, extras, y_hat)
         logger.print_batch(logger is self.logger)
 
+    def __save_path(self, save_as):
+        folder = os.path.join(csd(), self.submissions_folder, self.name)
+        file = None
+
+        if save_as == SaveAs.CSV:
+            file = '{} - {:03d}.csv'.format(self.current_cfg, self.epoch_ran)
+        elif save_as == SaveAs.NPY:
+            file = '{} - {:03d}.npy'.format(self.current_cfg, self.epoch_ran)
+
+        return folder, file
+
+    def __save_results(self, results, save_as):
+        folder, file = self.__save_path(save_as)
+        if folder is None or file is None:
+            return
+
+        path = os.path.join(folder, file)
+        mkdirp(folder)
+
+        if save_as == SaveAs.CSV:
+            field_names = get(self.cfg, TrainerOptions.CSV_FIELD_NAMES.value, default=['id', 'label'])
+            write_to_csv(results, path, field_names)
+        elif save_as == SaveAs.NPY:
+            np.save(path, np.array(results, dtype='object'))
+
+        p('Submission file saved to "{}".'.format(path))
+
     def run(self, epochs=1):
         has_scheduler = self.scheduler != None
         schedule_on_batch = get(self.cfg, TrainerOptions.SCHEDULE_ON_BATCH.value, default=False)
@@ -634,15 +670,9 @@ class Trainer(object):
 
         if mode is Mode.TEST:
             results = self.__post_test(results)
-            folder = os.path.join(csd(), self.submissions_folder, self.name)
-            file = '{} - {:03d}.csv'.format(self.current_cfg, self.epoch_ran)
-            path = os.path.join(folder, file)
 
-            mkdirp(folder)
-            field_names = get(self.cfg, TrainerOptions.CSV_FIELD_NAMES.value, default=['id', 'label'])
-            write_to_csv(results, path, field_names)
-
-            p('Submission file saved to "{}".'.format(path))
+            save_as = get(self.cfg, TrainerOptions.SAVE_AS.value, default=SaveAs.CSV)
+            self.__save_results(results, save_as)
         else:
             self.logger.print_summary()
 

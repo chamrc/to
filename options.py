@@ -22,10 +22,24 @@ class DataOptions(Enum):
 #----------------------------------------------------------------------------------------------------------
 
 
+class SaveAs(IntEnum):
+    CSV = 0
+    NPY = 1
+
+
 class TrainerOptions(Enum):
+    DEV_MODE = 'dev_mode'  # Defaults to False
     BATCH_SIZE = 'batch_size'  # Defaults to 64
+    AUTO_RELOAD_SAVED_MODEL = 'auto_reload_saved_model'
+
+    CFG_FOLDER = 'cfg_folder'
+    MODELS_FOLDER = 'models_folder'
+    SUBMISSIONS_FOLDER = 'submissions_folder'  # Defaults to 'submissions'
+
     OPTIMIZER = 'optimizer'  # Defaults to Adam
     OPTIMIZER_ARGS = 'optimizer_args'  # Defaults to { 'lr': 0.01 }
+    LOSS_FN = 'loss_fn'  # Defaults to nn.CrossEntropyLoss
+
     SCHEDULER = 'scheduler'  # Defaults to schedule on validation loss
     SCHEDULER_ARGS = 'scheduler_args'
     SCHEDULER_KWARGS = 'scheduler_kwargs'
@@ -35,12 +49,13 @@ class TrainerOptions(Enum):
     SCHEDULE_ON_BATCH = 'schedule_on_batch'  # Call scheduler for each batch, instead of epoch
     SCHEDULE_ON_ACCURACY = 'schedule_on_accuracy'  # Only works if print_accuracy is True
     SCHEDULE_ON_TRAIN_DATA = 'schedule_on_train_data'  # Schedule on train data instead
-    LOSS_FN = 'loss_fn'  # Defaults to nn.CrossEntropyLoss
-    AUTO_RELOAD_SAVED_MODEL = 'auto_reload_saved_model'
-    DEV_MODE = 'dev_mode'  # Defaults to False
+
     PRINT_INVERVAL = 'print_inverval'  # Defaults to 100
     PRINT_ACCURACY = 'print_accuracy'  # Defaults to True
+
+    SAVE_AS = 'save_as'  # Defaults to SaveAs.CSV
     CSV_FIELD_NAMES = 'csv_field_names'  # Defaults to ['id', 'label']
+
     # Generate test output (batch, 1) from y_hat (batch, classes)
     GENERATE_AXIS = 'generate_axis'  # Defaults to 1
 
