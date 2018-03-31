@@ -110,12 +110,19 @@ class Logger(object):
             p(template.format(lr, epoch, self.batch_count, count, \
                 batch_time, total_time, percentage, min_loss, mean_loss, *extras), debug=False)
 
+    def _last_batch(self, lst):
+        length = len(lst)
+        if length % self.print_interval == 0:
+            return lst[-self.print_interval:]
+        else:
+            return lst[length // self.print_interval * self.print_interval:]
+
     def get_percentage(self):
         percentage = self.all_correct / max(self.all_count, 1) * 100
         return percentage
 
     def get_loss(self):
-        losses = self.losses[-(len(self.losses) % self.print_interval):]
+        losses = self._last_batch(self.losses)
         min_loss, mean_loss, total_loss = float('inf'), float('inf'), float('inf')
         if len(losses):
             min_loss = np.asscalar(np.amin(losses))
