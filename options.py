@@ -1,4 +1,4 @@
-from enum import Enum, IntEnum
+from .utils.enum import BaseEnum, BaseIntEnum
 import torch.nn as nn
 
 #----------------------------------------------------------------------------------------------------------
@@ -8,7 +8,7 @@ import torch.nn as nn
 data_type_name = lambda x: ['dev', 'train', 'test'][x]
 
 
-class DataOptions(Enum):
+class DataOptions(BaseEnum):
     Data_FOLDER = 'data_folder'  # Defaults to 'data'
     DEV_DATA_FILE = 'dev_data_file'  # Defaults to 'dev-features.npy'
     DEV_LABELS_FILE = 'dev_labels_file'  # Defaults to 'dev-labels.npy'
@@ -22,12 +22,12 @@ class DataOptions(Enum):
 #----------------------------------------------------------------------------------------------------------
 
 
-class SaveAs(IntEnum):
+class SaveAs(BaseIntEnum):
     CSV = 0
     NPY = 1
 
 
-class TrainerOptions(Enum):
+class TrainerOptions(BaseEnum):
     DEV_MODE = 'dev_mode'  # Defaults to False
     BATCH_SIZE = 'batch_size'  # Defaults to 64
     AUTO_RELOAD_SAVED_MODEL = 'auto_reload_saved_model'
@@ -65,7 +65,7 @@ class TrainerOptions(Enum):
 #----------------------------------------------------------------------------------------------------------
 
 
-class InitOptions(Enum):
+class InitOptions(BaseEnum):
     """
     Defaults to:
         {
@@ -91,20 +91,20 @@ class InitOptions(Enum):
 #----------------------------------------------------------------------------------------------------------
 
 
-class NeuralNetworkOptions(Enum):
+class NeuralNetworkOptions(BaseEnum):
     IN_CHANNELS = 'in_channels'  # *MUST*
     OUT_CHANNELS = 'out_channels'  # *MUST*
     LAYERS = 'layers'
 
 
-class RNNModelOptions(Enum):
+class RNNModelOptions(BaseEnum):
     IN_CHANNELS = 'in_channels'  # *MUST*
     OUT_CHANNELS = 'out_channels'  # *MUST*
     LAYERS = 'layers'
     PACK_PADDED = 'pack_padded'  # Defaults to False
 
 
-class ResNetOptions(Enum):
+class ResNetOptions(BaseEnum):
     IN_CHANNELS = 'in_channels'  # *MUST*
     OUT_CHANNELS = 'out_channels'  # *MUST*
     RESNET_TYPE = 'resnet_type'  # Load default ResNet models: (18, 34, 50, 101, 152)
@@ -155,7 +155,7 @@ class ResNetOptions(Enum):
 #----------------------------------------------------------------------------------------------------------
 
 
-class TrainerEvents(Enum):  # Events that can be binded
+class TrainerEvents(BaseEnum):  # Events that can be binded
     # Called when loss is being computed.
     # fn(mode, x, y, extras, y_hat) => loss
     COMPUTE_LOSS = 'compute_loss'

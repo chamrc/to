@@ -33,7 +33,7 @@ class Trainer(object):
         self.epoch_ran = 0
         self.logger = Logger(self)
         self.name = sys.argv[0].replace('.py', '')
-        self.commands = ['list', 'help', 'use', 'load', 'run', 'test', 'validate', 'set']
+        self.commands = ['list', 'help', 'use', 'load', 'run', 'test', 'validate', 'set', 'exit']
         # Configurations
         self.cfg_folder = 'configurations'
         self.default_cfg = 'default'
@@ -55,10 +55,10 @@ class Trainer(object):
         self.reset()
 
     def reset(self):
-        self.__init_folder()
         self.__init_model()
         self.__init_optim()
         self.__init_loss_fn()
+        return self
 
     def __init_folder(self):
         self.cfg_folder = get(self.cfg, TrainerOptions.CFG_FOLDER.value, default='configurations')
@@ -124,6 +124,8 @@ class Trainer(object):
 
             self.current_cfg = filename(path).replace('.py', '')
             self.current_cfg_path = path
+
+            self.__init_folder()
         except IOError as e:
             raise Exception('Configuration file not found at "{}".'.format(path))
 
@@ -209,11 +211,15 @@ class Trainer(object):
     def load_model(self, epoch=None):
         pattern = None
 
+        if epoch == 0:
+            p('Resetting model to primitive state.')
+            return self.reset()
+
         epoch, path, files, versions = self.get_versions(epoch)
         if path is None and epoch is not None:  # Can't find the exact epoch, loading the highest.
             epoch, path, files, versions = self.get_versions()
 
-        if epoch >= 0 and path is not None:
+        if epoch > 0 and path is not None:
             p('Loading neural network "{}" using configuration "{}" and epoch "{}" at "{}"'.format( \
                 self.name, self.current_cfg, epoch, path))
             try:
@@ -274,7 +280,8 @@ class Trainer(object):
         mkdirp('.flare')
         touch('.flare/history')
 
-        while True:
+        should_exit = False
+        while not should_exit:
             c = prompt(
                 '> ',
                 history=FileHistory('.flare/history'),
@@ -283,7 +290,7 @@ class Trainer(object):
                 validator=CommandValidator(self)
             )
             try:
-                self.process_command(c)
+                should_exit = self.process_command(c)
             except Exception as e:
                 traceback.print_exc()
 
@@ -303,7 +310,7 @@ class Trainer(object):
             if len(parts) == 2:
                 self.load_model(int(parts[1]))
             else:
-                self.load_model(0)
+                self.load_model()
         elif command == 'run':
             if len(parts) == 1:
                 self.run()
@@ -330,6 +337,9 @@ class Trainer(object):
                             fn()
                         else:
                             p('Skipping test because epoch {} cannot be loaded correctly.'.format(i))
+        elif command == 'exit':
+            return True
+        return False
 
     #----------------------------------------------------------------------------------------------------------
     # Commands
@@ -340,24 +350,32 @@ class Trainer(object):
         parameter = fg(119)
         reset = attr('reset')
 
-        print('Module:\t\t\t{}{}{}'.format(color, self.name, reset))
-        print('Epoch:\t\t\t{}{}{}'.format(color, self.epoch_ran, reset))
-        print('Configuration:\t\t{}{}{}'.format(color, self.current_cfg, reset))
-        print('Configuration Path:\t{}{}.py{}'.format(color, self.current_cfg_path, reset))
-        print('Configuration Folder:\t\t\t{}{}{}'.format(color, self.cfg_folder, reset))
-        print('Models Folder:\t\t\t{}{}{}'.format(color, self.models_folder, reset))
-        print('Submissions Folder:\t\t\t{}{}{}'.format(color, self.submissions_folder, reset))
-        print()
-        configs = []
+        def colorize(o):
+            return '{}{}{}'.format(color, o, reset)
+
+        configs = [
+            ('Module', self.name, color),
+            ('Epoch', self.epoch_ran, color),
+            ('Configuration', self.current_cfg, color),
+            ('Configuration Path', self.current_cfg_path, color),
+            ('Configuration Folder', self.cfg_folder, color),
+            ('Models Folder', self.models_folder, color),
+            ('Submissions Folder', self.submissions_folder, color),
+            None,
+        ]
+
         for k in list(filter(lambda x: not x.startswith('__'), dir(self.cfg))):
             v = getattr(self.cfg, k)
-            configs.append((k, v))
-        max_key_len = max([len(k) for k, _ in configs])
+            configs.append((k, v, parameter))
+        max_key_len = max([len(o[0]) if o else 0 for o in configs])
 
-        for k, v in configs:
-            w('{}{} :    {}'.format(k, ' ' * (max_key_len - len(k)), parameter))
-            w(re.sub('^    ', ' ' * (max_key_len + 6), ff(v, prefix='    '), flags=re.M))
-            print(reset)
+        for o in configs:
+            if o is None:
+                print()
+            else:
+                w('{}{} :    {}'.format(o[0], ' ' * (max_key_len - len(o[0])), o[2]))
+                w(re.sub('^    ', ' ' * (max_key_len + 6), ff(o[1], prefix='    '), flags=re.M))
+                print(reset)
 
         return self
 

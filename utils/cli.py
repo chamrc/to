@@ -33,7 +33,7 @@ class CommandValidator(Validator):
                 pass
             elif length != 2 or not parts[1].isdigit():
                 raise ValidationError(message='load: Please enter (and only enter) a number for which epoch to load.')
-            elif not self.trainer.has_version(int(parts[1])):
+            elif int(parts[1]) != 0 and not self.trainer.has_version(int(parts[1])):
                 raise ValidationError(
                     message='load: Epoch {} doesn\'t exist for configuration "{}".'.
                     format(parts[1], self.trainer.current_cfg)
@@ -82,6 +82,8 @@ class CommandValidator(Validator):
                 for f in files:
                     if f not in options:
                         raise ValidationError(message='vote: Submission file "{}" not found.'.format(f))
+        elif command == 'exit':
+            pass
         else:
             raise ValidationError(message='{}: Invalid command.'.format(command))
 
