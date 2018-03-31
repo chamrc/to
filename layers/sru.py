@@ -735,8 +735,12 @@ class SRU(_BaseRNNModule):
             )
 
         for i in range(num_layers):
+            in_channels = self.n_in if i == 0 else self.out_size
+            # if i != 0 and self.bidirectional:
+            #     in_channels *= 2
+
             l = SRUCell(
-                n_in=self.n_in if i == 0 else self.out_size,
+                n_in=in_channels,
                 n_out=self.n_out,
                 dropout=dropout if i + 1 != num_layers else 0,
                 rnn_dropout=rnn_dropout,
@@ -751,7 +755,7 @@ class SRU(_BaseRNNModule):
             )
             self.rnn_lst.append(l)
             if layer_norm:
-                self.ln_lst.append(LayerNorm(self.n_out))
+                self.ln_lst.append(LayerNorm(self.n_out * (2 if self.bidirectional else 1)))
 
     def __repr__(self):
         template = '({}, {}, num_layers={}, dropout={}, rnn_dropout={}, \
@@ -817,10 +821,12 @@ class LayerNorm(nn.Module):
             return x
         mu = torch.mean(x, dim=-1)
         sigma = torch.std(x, dim=-1, unbiased=False)
+
         # HACK. PyTorch is changing behavior
         if mu.dim() == x.dim() - 1:
             mu = mu.unsqueeze(mu.dim())
             sigma = sigma.unsqueeze(sigma.dim())
+
         output = (x - mu.expand_as(x)) / (sigma.expand_as(x) + self.eps)
         output = output.mul(self.a.expand_as(output)) \
             + self.b.expand_as(output)
