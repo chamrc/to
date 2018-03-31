@@ -60,7 +60,8 @@ class DataReader():
             if self.debug:
                 p('Dataset "{}" has {} records.'.format(path, len(results)))
             return results
-        return None
+        else:
+            raise FileNotFoundError('File "{}" not found.'.format(path))
 
     def __save_path(self, data, data_type, is_label):
         path = self.__get_path(data_type, is_label)

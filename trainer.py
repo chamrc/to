@@ -55,7 +55,7 @@ class Trainer(object):
         self.reset()
 
     def reset(self):
-        self.__init__folder()
+        self.__init_folder()
         self.__init_model()
         self.__init_optim()
         self.__init_loss_fn()
