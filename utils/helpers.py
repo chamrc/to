@@ -294,7 +294,10 @@ def pp(o, tab='    ', prefix='', debug=False):
 
 
 def ff(s, tab='    ', prefix=''):
-    s = '{}'.format(s)
+    if hasattr(s, '__repr__'):
+        s = repr(s)
+    else:
+        s = '{}'.format(s)
     s = re.sub(', *', ',', s)
     r = []
 
