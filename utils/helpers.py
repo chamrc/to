@@ -293,7 +293,7 @@ def pp(o, tab='    ', prefix='', debug=False):
 
 def ff(s, tab='    ', prefix=''):
     s = '{}'.format(s)
-    s = s.replace(', ', ',')
+    s = re.sub(', *', ',', s)
     r = []
 
     def is_named_arg(idx):

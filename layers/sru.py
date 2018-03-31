@@ -716,11 +716,17 @@ class SRU(_BaseRNNModule):
         self.depth = num_layers
         self.dropout = dropout
         self.rnn_dropout = rnn_dropout
+        self.bidirectional = bidirectional
+        self.use_tanh = use_tanh
+        self.use_relu = use_relu
+        self.use_selu = use_selu
+        self.use_wieght_norm = weight_norm
+        self.use_layer_norm = layer_norm
+        self.highway_bias = highway_bias
+
         self.rnn_lst = nn.ModuleList()
         self.ln_lst = nn.ModuleList()
-        self.bidirectional = bidirectional
-        self.use_layer_norm = layer_norm
-        self.use_wieght_norm = weight_norm
+
         self.out_size = hidden_size * 2 if bidirectional else hidden_size
         if use_tanh + use_relu + use_selu > 1:
             sys.stderr.write(
@@ -746,6 +752,16 @@ class SRU(_BaseRNNModule):
             self.rnn_lst.append(l)
             if layer_norm:
                 self.ln_lst.append(LayerNorm(self.n_out))
+
+    def __repr__(self):
+        template = '({}, {}, num_layers={}, dropout={}, rnn_dropout={}, \
+            bidirectional={}, use_tanh={}, use_relu={}, use_selu={}, weight_norm={}, \
+            layer_norm={}, highway_bias={})'
+
+        return self.__class__.__name__ + template.format(
+            self.n_in, self.n_out, self.depth, self.dropout, self.rnn_dropout, \
+            self.bidirectional, self.use_tanh, self.use_relu, self.use_selu, self.use_wieght_norm, \
+            self.use_layer_norm, self.highway_bias)
 
     def set_bias(self, bias_val=0):
         for l in self.rnn_lst:
