@@ -60,6 +60,8 @@ class DataReader():
             if self.debug:
                 p('Dataset "{}" has {} records.'.format(path, len(results)))
             return results
+        elif data_type == TEST and is_label:
+            return None
         else:
             raise FileNotFoundError('File "{}" not found.'.format(path))
 

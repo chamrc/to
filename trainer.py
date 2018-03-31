@@ -664,13 +664,14 @@ class Trainer(object):
 
             if mode == Mode.TEST:
                 result = self.__generate(x, y, extras, y_hat)
-                results += list(result)
+
+                for i in range(len(result)):
+                    results.append(result[i])
 
             self.__print_batch(mode, x, y, extras, y_hat, self.logger)
 
         if mode is Mode.TEST:
             results = self.__post_test(results)
-
             save_as = get(self.cfg, TrainerOptions.SAVE_AS.value, default=SaveAs.CSV)
             self.__save_results(results, save_as)
         else:

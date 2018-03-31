@@ -136,6 +136,8 @@ def where(lmd, lst, asc=True):
 
 
 def csd():
+    if sys.argv[0] == '':
+        return cwd()
     return os.path.dirname(os.path.abspath(sys.argv[0]))
 
 
@@ -487,3 +489,21 @@ def collate(data, axis=1, dim=2, mode='constant', value=0, min_len=None, concat_
     one_hot = to_tensor(np.array([[1] * length + [0] * (max_len - length) for length in lengths]))
 
     return tuple(results + [lengths, one_hot])
+
+
+def mask(data, one_hot, axis=1):
+    if isinstance(data, torch.autograd.Variable):
+        data = data.data.cpu().numpy()
+    elif isinstance(data, torch.tensor._TensorBase):
+        data = data.cpu().numpy()
+
+    results = []
+    for i in range(len(data)):
+        assert data[i].shape[axis - 1] == one_hot[i].shape[0]
+        length = int(one_hot[i].sum())
+        results.append(data[i].take(list(range(0, length)), axis=axis - 1))
+    return np.array(results, dtype='object')
+    # print(data[1].shape)
+    # print(one_hot[1].shape)
+    # print('///////////////////')
+    # print(one_hot[1].cpu().numpy().sum())
