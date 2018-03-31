@@ -367,7 +367,7 @@ class SRU_Compute_GPU(Function):
 
     def compile_functions(self):
         device = torch.cuda.current_device()
-        print('SRU loaded for gpu {}'.format(device))
+
         mod = function.Module()
         mod.load(bytes(self._SRU_PTX.encode()))
         fwd_func = mod.get_function('sru_fwd')

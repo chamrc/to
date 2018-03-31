@@ -83,7 +83,7 @@ class Logger(object):
         total_time = curr_time - self.t0
         self.t1 = time.time()
 
-        lr = self.trainer._get_lr()
+        lr = self.trainer.get_lr()
         count = self.batch_count * self.batch_size
         if self.mode is Mode.TEST:
             template = 'lr {} => Batch {} Count {}. Time elapsed: {:.2f} | {:.2f} seconds.'

@@ -164,7 +164,7 @@ class Trainer(object):
     # Model
     #----------------------------------------------------------------------------------------------------------
 
-    def adjust_lr(self, new_lr):
+    def set_lr(self, new_lr):
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = new_lr
 
@@ -173,6 +173,10 @@ class Trainer(object):
             get(self.cfg, TrainerOptions.OPTIMIZER_ARGS.value)['lr'] = new_lr
 
         return self
+
+    def get_lr(self):
+        lr = [g['lr'] for g in self.optimizer.param_groups]
+        return lr
 
     def set_model(self, Model):
         self.Model = Model
@@ -407,7 +411,7 @@ class Trainer(object):
         p('Setting configuration key "{}" to "{}"'.format(key, val))
 
         if key == 'learning_rate':
-            self.adjust_lr(num(val))
+            self.set_lr(num(val))
         else:
             cmd = 'self.cfg.{} = {}'.format(key, val)
             try:
@@ -498,10 +502,6 @@ class Trainer(object):
         percentage, (_, _, loss) = validate_logger.get_percentage(), validate_logger.get_loss()
         return percentage, loss
 
-    def _get_lr(self):
-        lr = [g['lr'] for g in self.optimizer.param_groups]
-        return lr
-
     def __lr_changed(self, old_lr, new_lr):
         eps = 1e-6
         for i in range(len(old_lr)):
@@ -522,12 +522,12 @@ class Trainer(object):
             batch_count = get(self.cfg, TrainerOptions.SCHEDULE_BATCH_COUNT.value, default=-1)
             percentage, loss = self.__get_validation_results(batch_count)
 
-        old_lr = self._get_lr()
+        old_lr = self.get_lr()
         use_percentage = get(self.cfg, TrainerOptions.SCHEDULE_ON_ACCURACY.value, default=False)
         value = percentage if use_percentage else loss
         args, kwargs = filter_args(self.scheduler.step, [value], {})
         self.scheduler.step(*args, **kwargs)
-        new_lr = self._get_lr()
+        new_lr = self.get_lr()
 
         verbose = get(self.cfg, TrainerOptions.SCHEDULE_VERBOSE.value, default=False)
         if verbose:
