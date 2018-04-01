@@ -19,10 +19,8 @@ class RNNModel(NeuralNetwork):
 
         self.should_pack_padded = get(self.cfg, RNNModelOptions.PACK_PADDED.value, default=False) and \
             len(self.starts) >= 0 and len(self.ends) >= 0
-        self.__states = None
 
     def __forward(self, h, lengths=None):
-        hidden = self.__states
 
         for i, layer in enumerate(self.layers):
             if is_rnn(layer):
@@ -31,14 +29,12 @@ class RNNModel(NeuralNetwork):
 
                 # if is_pytorch_rnn(layer):
                 #     layer.flatten_parameters()
-                h, hidden = layer(h, hidden)
+                h, _ = layer(h)
 
                 if self.should_pack_padded and i in self.ends:
                     h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first=False)
             else:
                 h = forward(layer, [h, lengths], {})
-
-        self.__states = repackage_hidden(hidden)
 
         return h
 
