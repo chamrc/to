@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from ..options import *
+from ..utils.options import *
 from ..utils.helpers import *
 
 DEV, TRAIN, TEST = range(3)

@@ -12,7 +12,7 @@ import torch.nn as nn
 import numpy as np
 from enum import IntEnum
 from inspect import signature
-from ..options import *
+from .options import *
 from .init import *
 
 #----------------------------------------------------------------------------------------------------------
@@ -413,6 +413,13 @@ def inheritance(cls):
 #----------------------------------------------------------------------------------------------------------
 # PyTorch helpers
 #----------------------------------------------------------------------------------------------------------
+
+
+def repackage_hidden(h):
+    if type(h) == torch.autograd.Variable:
+        return torch.autograd.Variable(h.data)
+    else:
+        return tuple(repackage_hidden(v) for v in h)
 
 
 def to_tensor(array):

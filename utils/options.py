@@ -1,4 +1,4 @@
-from .utils.enum import BaseEnum, BaseIntEnum
+from .enum import BaseEnum, BaseIntEnum
 import torch.nn as nn
 
 #----------------------------------------------------------------------------------------------------------
@@ -156,9 +156,6 @@ class ResNetOptions(BaseEnum):
 
 
 class TrainerEvents(BaseEnum):  # Events that can be binded
-    # Called when loss is being computed.
-    # fn(mode, x, y, extras, y_hat) => loss
-    COMPUTE_LOSS = 'compute_loss'
     # Called in training and validating
     # fn(mode, x, y, extra, y_hat) => extra_logs ({'name': val})
     EXTRA_LOG_MSG = 'extra_log_msg'
@@ -174,6 +171,9 @@ class TrainerEvents(BaseEnum):  # Events that can be binded
     # Called after calling model
     # fn(mode, x, y, extras, y_hat) => y_hat
     POST_PROCESS = 'post_process'
+    # Called when loss is being computed.
+    # fn(mode, x, y, extras, y_hat) => loss
+    COMPUTE_LOSS = 'compute_loss'
     # Called to get percentage accuracy
     # fn(mode, x, y, extras, y_hat) => match_results (ndarray, 1 if correct, 0 otherwise)
     MATCH_RESULTS = 'match_results'

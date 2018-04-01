@@ -16,7 +16,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from .utils.cli import *
 from .utils.helpers import *
 from .utils.batch_logger import *
-from .options import *
+from .utils.options import *
 from .net import *
 from .data.dataset import *
 
@@ -51,7 +51,10 @@ class Trainer(object):
         # Submission
         self.submissions_folder = 'submissions'
 
-        self.load_cfg('{}/{}.py'.format(self.cfg_folder, self.current_cfg))
+        if len(sys.argv) == 2:
+            self.load_cfg('{}/{}.py'.format(self.cfg_folder, sys.argv[1].replace('.py', '')))
+        else:
+            self.load_cfg('{}/{}.py'.format(self.cfg_folder, self.current_cfg))
         self.reset()
 
     def reset(self):

@@ -44,6 +44,13 @@ class LogShapeLayer(BaseLayer):
         return h
 
 
+class PrintLayer(BaseLayer):
+
+    def forward(self, h):
+        print()
+        return h
+
+
 class PackPaddedLayer(BaseLayer):
 
     def __init__(self, batch_first=False):
