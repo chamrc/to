@@ -26,7 +26,7 @@ class CommandValidator(Validator):
         elif command == 'use':
             if length != 2:
                 raise ValidationError(message='use: A valid configuration file is required.')
-            elif not self.trainer.has_configuration(parts[1]):
+            elif not self.trainer.has_cfg(parts[1]):
                 raise ValidationError(message='use: Configuration "{}" doesn\'t exist.'.format(parts[1]))
         elif command == 'load':
             if length == 1:

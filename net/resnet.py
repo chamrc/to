@@ -203,11 +203,6 @@ class ResNet(nn.Module):
 
             self.fc = nn.Linear(512 * block.expansion, out_channels)
 
-        self._init_parameters()
-
-    def _init_parameters(self):
-        init_model_parameters(self)
-
     def _make_layer(self, block, planes, blocks, dim, stride=1, Nonlinearity=nn.ReLU):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:

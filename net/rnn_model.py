@@ -20,11 +20,6 @@ class RNNModel(NeuralNetwork):
         self.should_pack_padded = get(self.cfg, RNNModelOptions.PACK_PADDED.value, default=False) and \
             len(self.starts) >= 0 and len(self.ends) >= 0
 
-        self._init_parameters()
-
-    def _init_parameters(self):
-        init_model_parameters(self)
-
     def __forward(self, h, lengths=None):
         for i, layer in enumerate(self.layers):
             if is_rnn(layer):

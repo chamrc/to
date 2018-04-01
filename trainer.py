@@ -67,6 +67,7 @@ class Trainer(object):
 
     def __init_model(self):
         self.model = self.Model(self.cfg)
+        init_model_parameters(self.model)
         if torch.cuda.is_available():
             self.cuda_enabled = True
             self.model = self.model.cuda()
@@ -108,6 +109,13 @@ class Trainer(object):
     #----------------------------------------------------------------------------------------------------------
     # Configuration
     #----------------------------------------------------------------------------------------------------------
+
+    def has_cfg(self, cfg):
+        if not cfg.endswith('.py'):
+            cfg += '.py'
+        if '/' not in cfg:
+            cfg = os.path.join(csd(), self.cfg_folder, cfg)
+        return os.path.isfile(cfg)
 
     def load_cfg(self, cfg_file):
         if not cfg_file.startswith(self.cfg_folder):
@@ -305,7 +313,7 @@ class Trainer(object):
         elif command == 'help':
             self.help()
         elif command == 'use':
-            self.load_configuration(parts[1])
+            self.load_cfg('{}/{}.py'.format(self.cfg_folder, parts[1].replace('.py', '')))
         elif command == 'load':
             if len(parts) == 2:
                 self.load_model(int(parts[1]))
